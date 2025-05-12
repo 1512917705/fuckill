@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>事件管理模块 v1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        /* 主布局 */
+        .main-layout {
+            display: flex;
+            height: calc(100vh - 100px); /* Adjust height based on top bar */
+            gap: 1rem; /* gap-4 */
+        }
+        .left-panel {
+            width: 30%;
+            min-width: 250px;
+            background-color: white;
+            padding: 1rem; /* p-4 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow */
+            display: flex;
+            flex-direction: column;
+            overflow-y: hidden; /* Prevent panel scroll, list scrolls */
+        }
+        .right-panel {
+            width: 70%;
+            background-color: white;
+            padding: 1.5rem; /* p-6 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow */
+            overflow-y: auto; /* Allow scrolling for long event details */
+        }
+        .top-bar {
+            padding: 1rem;
+            background-color: white;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        /* 左侧列表 */
+        .event-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-top: 1rem; /* mt-4 */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            border-radius: 0.375rem; /* rounded-md */
+        }
+        .event-list-item {
+            padding: 0.75rem 1rem; /* p-3 px-4 */
+            border-bottom: 1px solid #e5e7eb; /* border-gray-200 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .event-list-item:last-child {
+            border-bottom: none;
+        }
+        .event-list-item:hover {
+            background-color: #f9fafb; /* gray-50 */
+        }
+        .event-list-item.selected {
+            background-color: #dbeafe; /* blue-100 */
+            font-weight: 600; /* font-semibold */
+        }
+        .event-list-item .event-name {
+            flex-grow: 1;
+            margin-right: 0.5rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .event-list-item .event-actions button {
+            margin-left: 0.5rem; /* ml-2 */
+            padding: 0.1rem 0.4rem;
+            font-size: 0.75rem; /* text-xs */
+            border-radius: 0.25rem; /* rounded-sm */
+        }
+        /* 右侧表单 */
+        .form-section {
+            margin-bottom: 1.5rem; /* mb-6 */
+        }
+        .form-section h3 {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 500; /* font-medium */
+            margin-bottom: 0.75rem; /* mb-3 */
+            color: #374151; /* gray-700 */
+        }
+        .form-label {
+            display: block;
+            font-weight: 500; /* font-medium */
+            margin-bottom: 0.25rem; /* mb-1 */
+            color: #4b5563; /* gray-600 */
+            font-size: 0.875rem; /* text-sm */
+        }
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 0.5rem; /* p-2 */
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: #60a5fa; /* blue-400 */
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); /* focus:ring-blue-300 */
+        }
+        .form-textarea {
+            min-height: 80px;
+        }
+        .form-checkbox-label {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #374151;
+        }
+        .form-checkbox {
+            margin-right: 0.5rem; /* mr-2 */
+            height: 1rem; /* h-4 */
+            width: 1rem; /* w-4 */
+        }
+        /* 选项列表 */
+        .options-list {
+            margin-top: 1rem; /* mt-4 */
+            border-top: 1px solid #e5e7eb; /* border-gray-200 */
+            padding-top: 1rem; /* pt-4 */
+        }
+        .option-item {
+            background-color: #f9fafb; /* gray-50 */
+            padding: 1rem; /* p-4 */
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            margin-bottom: 1rem; /* mb-4 */
+        }
+        .option-item h4 {
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 0.5rem; /* mb-2 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .option-item h4 .option-id {
+            font-size: 0.75rem;
+            color: #6b7280; /* gray-500 */
+            font-weight: normal;
+        }
+        .option-details p {
+            margin-bottom: 0.5rem; /* mb-2 */
+            font-size: 0.875rem; /* text-sm */
+            color: #4b5563; /* gray-600 */
+            word-break: break-all; /* Prevent long IDs/code from breaking layout */
+        }
+        .option-details strong {
+            color: #1f2937; /* gray-800 */
+            margin-right: 0.25rem;
+        }
+        /* 模态框 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none; /* JS control */
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem; /* p-8 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+            width: 90%;
+            max-width: 700px; /* Wider modal for options */
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-title {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 1.5rem; /* mb-6 */
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 0.75rem; /* top-3 */
+            right: 1rem; /* right-4 */
+            font-size: 1.5rem; /* text-2xl */
+            color: #9ca3af; /* gray-400 */
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .modal-close-btn:hover {
+            color: #374151; /* gray-700 */
+        }
+        .modal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        /* 简单的按钮样式 */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: 1px solid transparent;
+        }
+        .btn-primary { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-secondary { background-color: #6b7280; color: white; border-color: #6b7280; }
+        .btn-secondary:hover { background-color: #4b5563; }
+        .btn-danger { background-color: #ef4444; color: white; border-color: #ef4444; }
+        .btn-danger:hover { background-color: #dc2626; }
+        .btn-warning { background-color: #f59e0b; color: white; border-color: #f59e0b; }
+        .btn-warning:hover { background-color: #d97706; }
+        .btn-success { background-color: #10b981; color: white; border-color: #10b981; }
+        .btn-success:hover { background-color: #059669; }
+        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <button id="import-events-btn" class="btn btn-secondary">导入事件</button>
+        <input type="file" id="import-events-file" accept=".json" style="display: none;">
+        <button id="export-events-btn" class="btn btn-success">导出事件</button>
+    </div>
+
+    <div class="main-layout">
+        <div class="left-panel">
+            <button id="new-event-btn" class="btn btn-primary w-full mb-4">新建事件</button>
+            <input type="text" id="search-event-input" placeholder="搜索事件名称..." class="form-input mb-2">
+            <select id="filter-event-select" class="form-select mb-4">
+                <option value="all">查看全部事件</option>
+                <option value="root">只查看根事件</option>
+                <option value="common">只查看公共事件</option>
+            </select>
+            <div id="event-list" class="event-list-container">
+                <p class="p-4 text-gray-500 italic">暂无事件</p>
+            </div>
+        </div>
+
+        <div class="right-panel" id="event-editor-panel" style="display: none;"> <form id="event-form">
+                <input type="hidden" id="event-id"> <div class="form-section grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="event-name" class="form-label">事件名称:</label>
+                        <input type="text" id="event-name" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="event-type" class="form-label">事件类型:</label>
+                        <select id="event-type" class="form-select">
+                            <option value="normal">普通事件</option>
+                            <option value="combat">战斗事件</option>
+                            <option value="common">公共事件</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-4">
+                         <label class="form-checkbox-label">
+                            <input type="checkbox" id="event-is-root" class="form-checkbox">
+                            是否根事件 (故事起点)
+                        </label>
+                    </div>
+                </div>
+
+
+                <div class="form-section grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                        <label for="event-preconditions" class="form-label">前置条件 (JS代码, 返回 true 触发):</label>
+                        <textarea id="event-preconditions" class="form-textarea" rows="3" placeholder="例如: characterData.attributes['力量'].total >= 15 && characterData.inventory.has('key-item-id')"></textarea>
+                    </div>
+                    <div>
+                        <label for="event-mutex-conditions" class="form-label">互斥条件 (JS代码, 返回 true 不触发):</label>
+                        <textarea id="event-mutex-conditions" class="form-textarea" rows="3" placeholder="例如: characterData.status.some(s => s.name === '已完成某任务')"></textarea>
+                    </div>
+                </div>
+
+                 <div class="form-section grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <div>
+                        <label for="event-time" class="form-label">时间限制 (逗号分隔, 留空不限):</label>
+                        <input type="text" id="event-time" class="form-input" placeholder="白天,夜晚,上午,下午,黄昏">
+                    </div>
+                     <div>
+                        <label for="event-location" class="form-label">地点限制 (逗号分隔, 留空不限):</label>
+                        <input type="text" id="event-location" class="form-input" placeholder="荒野,海洋,城市,森林">
+                    </div>
+                     <div>
+                        <label for="event-weather" class="form-label">天气限制 (逗号分隔, 留空不限):</label>
+                        <input type="text" id="event-weather" class="form-input" placeholder="晴天,大雨,暴风雨">
+                    </div>
+                 </div>
+
+
+                <div class="form-section">
+                    <label for="event-visible-desc" class="form-label">可见描述 (玩家直接看到):</label>
+                    <textarea id="event-visible-desc" class="form-textarea" rows="4" required></textarea>
+                </div>
+
+                <div class="form-section">
+                    <label for="event-conditional-desc" class="form-label">条件描述 (JS代码, 返回字符串显示):</label>
+                    <textarea id="event-conditional-desc" class="form-textarea" rows="4" placeholder="每行一个条件描述, 例如:&#10;if (characterData.attributes['感知'].total >= 13) return '你注意到角落里有一丝微光。';&#10;if (characterData.personality.includes('好奇')) return '你忍不住想调查一下那个奇怪的符号。';"></textarea>
+                </div>
+
+                <div class="form-section">
+                    <label for="event-hidden-desc" class="form-label">隐藏描述 (仅供AI或内部参考):</label>
+                    <textarea id="event-hidden-desc" class="form-textarea" rows="3"></textarea>
+                </div>
+
+                 <div class="form-section grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                        <label for="event-visible-creatures" class="form-label">可见生物列表 (逗号分隔):</label>
+                        <input type="text" id="event-visible-creatures" class="form-input" placeholder="哥布林,史莱姆">
+                    </div>
+                    <div>
+                        <label for="event-hidden-creatures" class="form-label">隐藏生物列表 (逗号分隔):</label>
+                        <input type="text" id="event-hidden-creatures" class="form-input" placeholder="潜行的刺客">
+                    </div>
+                 </div>
+
+                 <div class="form-section">
+                    <label for="event-max-gain" class="form-label">最大收益描述 (限制AI生成):</label>
+                    <input type="text" id="event-max-gain" class="form-input" placeholder="少量金币, 基础草药, 力量熟练度微量提升">
+                 </div>
+
+                <div class="form-section">
+                    <h3>选项管理</h3>
+                    <div id="options-list" class="options-list">
+                        <p class="text-gray-500 italic">暂无选项</p>
+                    </div>
+                    <button type="button" id="add-option-btn" class="btn btn-success mt-4">添加新选项</button>
+                </div>
+
+                <div class="mt-8 flex justify-end gap-4">
+                     <button type="button" id="save-event-btn" class="btn btn-primary">保存事件</button>
+                     <button type="button" id="cancel-edit-btn" class="btn btn-secondary">取消</button>
+                </div>
+            </form>
+        </div>
+         <div class="right-panel flex items-center justify-center text-gray-500" id="event-placeholder">
+            <p>请在左侧选择一个事件进行查看或编辑，或点击“新建事件”。</p>
+        </div>
+    </div>
+
+    <div id="option-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="option-modal-close-btn" class="modal-close-btn" title="关闭">&times;</button>
+            <h3 id="option-modal-title" class="modal-title">添加新选项</h3>
+            <form id="option-form">
+                <input type="hidden" id="option-id"> <input type="hidden" id="option-parent-event-id"> <div class="modal-grid">
+                    <div>
+                        <label for="option-title" class="form-label">选项标题:</label>
+                        <input type="text" id="option-title" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="option-is-end" class="form-checkbox-label mt-6">
+                            <input type="checkbox" id="option-is-end" class="form-checkbox">
+                            是否结束事件
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label for="option-text" class="form-label">选项文本 (玩家看到的描述):</label>
+                    <textarea id="option-text" class="form-textarea" rows="3" required></textarea>
+                </div>
+
+                <div class="mt-4">
+                    <label for="option-condition" class="form-label">显示条件 (JS代码, 返回 true 显示):</label>
+                    <textarea id="option-condition" class="form-textarea" rows="3" placeholder="例如: characterData.attributes['魅力'].total >= 12"></textarea>
+                </div>
+
+                <div class="mt-4">
+                    <label for="option-probability-display" class="form-label">概率显示 (JS代码, 返回字符串):</label>
+                    <textarea id="option-probability-display" class="form-textarea" rows="2" placeholder="例如: return `成功率: ${calculateSuccessRate()}%`"></textarea>
+                </div>
+
+                <div class="mt-4">
+                    <label for="option-function-call" class="form-label">调用函数 (JS代码, 返回 true/false):</label>
+                    <textarea id="option-function-call" class="form-textarea" rows="3" placeholder="例如: return Math.random() < 0.75; // 75% 成功率"></textarea>
+                </div>
+
+                 <div class="mt-4 modal-grid">
+                    <div>
+                        <label for="option-success-event-id" class="form-label">成功后跳转事件:</label>
+                        <select id="option-success-event-id" class="form-select">
+                            <option value="">-- 无跳转 --</option>
+                            </select>
+                    </div>
+                    <div>
+                        <label for="option-failure-event-id" class="form-label">失败后跳转事件:</label>
+                        <select id="option-failure-event-id" class="form-select">
+                             <option value="">-- 无跳转 --</option>
+                             </select>
+                    </div>
+                 </div>
+
+                 <div class="mt-4">
+                     <label for="option-result-effects" class="form-label">直接结果效果 (JSON格式):</label>
+                     <textarea id="option-result-effects" class="form-textarea" rows="4" placeholder='[{"type": "add_item", "id": "gold", "count": 10}, {"type": "change_proficiency", "attr": "力量", "amount": 5}, {"type": "add_status", "name": "疲惫", "statusType": "temporary"}]'></textarea>
+                     <p class="text-xs text-gray-500 mt-1">类型: add_item, remove_item, change_proficiency, add_status, remove_status, change_alignment, modify_resource, add_background</p>
+                 </div>
+
+
+                <div class="mt-6 flex justify-end gap-4">
+                    <button type="button" id="option-modal-cancel-btn" class="btn btn-secondary">取消</button>
+                    <button type="submit" id="option-modal-save-btn" class="btn btn-primary">保存选项</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // --- 全局变量与状态 ---
+        /** @type {Map<string, object>} 存储所有事件数据，Key 为事件 ID */
+        let allEventsData = new Map();
+        /** @type {string | null} 当前在右侧编辑或查看的事件 ID */
+        let currentEditingEventId = null;
+        /** @type {string | null} 当前正在编辑的选项 ID (用于区分新增和编辑) */
+        let currentEditingOptionId = null;
+        /** @type {'all' | 'root' | 'common'} 当前左侧列表的筛选类型 */
+        let currentEventFilter = 'all';
+        /** @type {string} 当前左侧列表的搜索关键词 */
+        let currentSearchTerm = '';
+
+        // --- 事件数据结构 (示例) ---
+        /*
+        const exampleEvent = {
+            id: "evt_start_forest", // 事件唯一 ID
+            name: "森林入口", // 事件名称
+            type: "normal", // 事件类型: normal, combat, common
+            isRoot: true, // 是否是根事件 (故事起点)
+            preconditions: "", // JS 代码，返回 true 触发
+            mutexConditions: "", // JS 代码，返回 true 不触发
+            time: ["白天"], // 时间限制列表
+            location: ["森林"], // 地点限制列表
+            weather: [], // 天气限制列表
+            visibleDesc: "你站在一片茂密的森林边缘，阳光透过树叶洒下斑驳的光点。一条小径蜿蜒伸向森林深处。", // 玩家直接看到的描述
+            conditionalDesc: [ // 条件描述列表
+                "if (characterData.attributes['感知'].total >= 12) return '你似乎闻到空气中有一丝腐败的气味。';",
+                "if (characterData.identity.includes('猎人')) return '你认出地上有一些动物的足迹。';"
+            ],
+            hiddenDesc: "这条路通往哥布林营地。", // 仅供内部参考
+            visibleCreatures: [], // 可见生物名称列表
+            hiddenCreatures: ["哥布林哨兵"], // 隐藏生物名称列表
+            maxGain: "少量经验，可能发现草药", // AI 生成收益限制描述
+            options: { // 选项对象，Key 为选项唯一 ID
+                "opt_forest_enter": {
+                    id: "opt_forest_enter", // 选项唯一 ID
+                    condition: "", // JS 代码，返回 true 显示
+                    title: "进入森林", // 选项标题
+                    text: "你决定沿着小径深入森林。", // 选项文本
+                    probabilityDisplay: "", // JS 代码，返回概率字符串
+                    functionCall: "", // JS 代码，返回 true/false
+                    isEnd: false, // 是否结束事件流
+                    successEventId: "evt_forest_path", // 成功后跳转的事件 ID
+                    failureEventId: "", // 失败后跳转的事件 ID
+                    resultEffects: [ // 直接结果效果
+                        { type: "change_proficiency", attr: "感知", amount: 1 }
+                    ]
+                },
+                "opt_forest_leave": {
+                    id: "opt_forest_leave",
+                    condition: "",
+                    title: "离开",
+                    text: "你觉得还是不要冒险，转身离开了森林边缘。",
+                    probabilityDisplay: "",
+                    functionCall: "",
+                    isEnd: true, // 结束事件
+                    successEventId: "",
+                    failureEventId: "",
+                    resultEffects: []
+                }
+            }
+        };
+        */
+
+        // --- DOM 元素引用 ---
+        // (在 DOMContentLoaded 中获取)
+        let eventListContainer, searchInput, filterSelect,
+            eventEditorPanel, eventForm, eventIdInput, eventNameInput, eventTypeSelect, eventIsRootCheckbox,
+            eventPreconditionsTextarea, eventMutexConditionsTextarea,
+            eventTimeInput, eventLocationInput, eventWeatherInput,
+            eventVisibleDescTextarea, eventConditionalDescTextarea, eventHiddenDescTextarea,
+            eventVisibleCreaturesInput, eventHiddenCreaturesInput, eventMaxGainInput,
+            optionsListContainer, addOptionBtn, saveEventBtn, cancelEditBtn, newEventBtn,
+            eventPlaceholder,
+            optionModal, optionModalCloseBtn, optionModalTitle, optionForm,
+            optionIdInput, optionParentEventIdInput, optionTitleInput, optionIsEndCheckbox,
+            optionTextTextarea, optionConditionTextarea, optionProbabilityDisplayTextarea,
+            optionFunctionCallTextarea, optionSuccessEventIdSelect, optionFailureEventIdSelect,
+            optionResultEffectsTextarea, optionModalCancelBtn, optionModalSaveBtn,
+            importBtn, exportBtn, importFile;
+
+
+        // --- 辅助函数 ---
+
+        /**
+         * @description 生成一个简单的唯一 ID (用于事件和选项)
+         * @param {string} prefix - ID 前缀 ('evt_' 或 'opt_')
+         * @returns {string} 唯一 ID
+         */
+        function generateUniqueId(prefix) {
+            return prefix + Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+        }
+
+        /**
+         * @description 安全地解析 JSON 字符串
+         * @param {string} jsonString - JSON 字符串
+         * @param {*} defaultValue - 解析失败时返回的默认值
+         * @returns {*} 解析后的对象或默认值
+         */
+        function safeJsonParse(jsonString, defaultValue = null) {
+            if (!jsonString || typeof jsonString !== 'string') {
+                return defaultValue;
+            }
+            try {
+                return JSON.parse(jsonString);
+            } catch (e) {
+                console.warn("JSON 解析失败:", e, "字符串:", jsonString);
+                return defaultValue;
+            }
+        }
+
+        // --- 事件管理逻辑 ---
+
+        /**
+         * @description 创建一个新事件对象
+         * @returns {object} 新事件对象
+         */
+        function createNewEventObject() {
+            const newId = generateUniqueId('evt_');
+            return {
+                id: newId,
+                name: `新事件_${newId.substring(4, 8)}`,
+                type: "normal",
+                isRoot: false,
+                preconditions: "",
+                mutexConditions: "",
+                time: [],
+                location: [],
+                weather: [],
+                visibleDesc: "",
+                conditionalDesc: [],
+                hiddenDesc: "",
+                visibleCreatures: [],
+                hiddenCreatures: [],
+                maxGain: "",
+                options: {}
+            };
+        }
+
+        /**
+         * @description 创建一个新选项对象
+         * @returns {object} 新选项对象
+         */
+        function createNewOptionObject() {
+            const newId = generateUniqueId('opt_');
+            return {
+                id: newId,
+                condition: "",
+                title: "新选项",
+                text: "",
+                probabilityDisplay: "",
+                functionCall: "",
+                isEnd: false,
+                successEventId: "",
+                failureEventId: "",
+                resultEffects: [] // 默认为空数组
+            };
+        }
+
+        /**
+         * @description 从表单数据更新事件对象
+         * @param {string} eventId - 要更新的事件 ID
+         */
+        function updateEventDataFromForm(eventId) {
+            const eventData = allEventsData.get(eventId);
+            if (!eventData) return;
+
+            eventData.name = eventNameInput.value.trim() || `事件_${eventId.substring(4, 8)}`;
+            eventData.type = eventTypeSelect.value;
+            eventData.isRoot = eventIsRootCheckbox.checked;
+            eventData.preconditions = eventPreconditionsTextarea.value.trim();
+            eventData.mutexConditions = eventMutexConditionsTextarea.value.trim();
+            // 处理逗号分隔的列表输入
+            eventData.time = eventTimeInput.value.split(',').map(s => s.trim()).filter(Boolean);
+            eventData.location = eventLocationInput.value.split(',').map(s => s.trim()).filter(Boolean);
+            eventData.weather = eventWeatherInput.value.split(',').map(s => s.trim()).filter(Boolean);
+            eventData.visibleDesc = eventVisibleDescTextarea.value.trim();
+            // 处理条件描述（每行一个）
+            eventData.conditionalDesc = eventConditionalDescTextarea.value.split('\n').map(s => s.trim()).filter(Boolean);
+            eventData.hiddenDesc = eventHiddenDescTextarea.value.trim();
+            eventData.visibleCreatures = eventVisibleCreaturesInput.value.split(',').map(s => s.trim()).filter(Boolean);
+            eventData.hiddenCreatures = eventHiddenCreaturesInput.value.split(',').map(s => s.trim()).filter(Boolean);
+            eventData.maxGain = eventMaxGainInput.value.trim();
+            // options 通过选项模态框单独处理
+        }
+
+        /**
+         * @description 从选项表单数据更新选项对象
+         * @param {string} eventId - 选项所属事件的 ID
+         * @param {string} optionId - 要更新的选项 ID
+         */
+        function updateOptionDataFromForm(eventId, optionId) {
+            const eventData = allEventsData.get(eventId);
+            if (!eventData || !eventData.options[optionId]) return;
+
+            const optionData = eventData.options[optionId];
+            optionData.title = optionTitleInput.value.trim() || `选项_${optionId.substring(4, 8)}`;
+            optionData.isEnd = optionIsEndCheckbox.checked;
+            optionData.text = optionTextTextarea.value.trim();
+            optionData.condition = optionConditionTextarea.value.trim();
+            optionData.probabilityDisplay = optionProbabilityDisplayTextarea.value.trim();
+            optionData.functionCall = optionFunctionCallTextarea.value.trim();
+            optionData.successEventId = optionSuccessEventIdSelect.value;
+            optionData.failureEventId = optionFailureEventIdSelect.value;
+            // 解析结果效果 JSON
+            optionData.resultEffects = safeJsonParse(optionResultEffectsTextarea.value.trim(), []);
+            if (!Array.isArray(optionData.resultEffects)) {
+                 console.warn(`选项 ${optionId} 的结果效果解析失败或不是数组，已重置为空数组。`);
+                 optionData.resultEffects = [];
+                 optionResultEffectsTextarea.value = '[]'; // 更新输入框
+                 alert("结果效果格式错误，必须是有效的 JSON 数组！已重置为空数组。");
+            }
+        }
+
+
+        // --- 渲染逻辑 ---
+
+        /**
+         * @description 渲染左侧事件列表
+         */
+        function renderEventList() {
+            eventListContainer.innerHTML = ''; // 清空
+            const searchTermLower = currentSearchTerm.toLowerCase();
+
+            // 筛选和排序事件
+            const filteredEvents = Array.from(allEventsData.values()).filter(event => {
+                // 应用名称搜索
+                if (searchTermLower && !event.name.toLowerCase().includes(searchTermLower)) {
+                    return false;
+                }
+                // 应用类型过滤
+                if (currentEventFilter === 'root' && !event.isRoot) {
+                    return false;
+                }
+                if (currentEventFilter === 'common' && event.type !== 'common') {
+                    return false;
+                }
+                return true;
+            }).sort((a, b) => a.name.localeCompare(b.name)); // 按名称排序
+
+            if (filteredEvents.length === 0) {
+                eventListContainer.innerHTML = '<p class="p-4 text-gray-500 italic">没有匹配的事件</p>';
+                return;
+            }
+
+            // 创建列表项
+            filteredEvents.forEach(event => {
+                const item = document.createElement('div');
+                item.classList.add('event-list-item');
+                item.dataset.eventId = event.id;
+                if (event.id === currentEditingEventId) {
+                    item.classList.add('selected'); // 高亮当前选中的事件
+                }
+
+                item.innerHTML = `
+                    <span class="event-name" title="${event.name} (${event.id})">${event.name} ${event.isRoot ? '🌳' : ''} ${event.type === 'common' ? '⚙️' : ''} ${event.type === 'combat' ? '⚔️' : ''}</span>
+                    <div class="event-actions">
+                        <button class="btn btn-warning btn-sm edit-event-btn" data-event-id="${event.id}">编辑</button>
+                        <button class="btn btn-danger btn-sm delete-event-btn" data-event-id="${event.id}">删除</button>
+                    </div>
+                `;
+                eventListContainer.appendChild(item);
+            });
+
+            // 绑定事件监听 (使用事件委托)
+            eventListContainer.removeEventListener('click', handleEventListClick); // 移除旧监听器
+            eventListContainer.addEventListener('click', handleEventListClick);
+        }
+
+        /**
+         * @description 渲染右侧事件编辑器
+         * @param {string | null} eventId - 要加载的事件 ID，如果为 null 则清空表单
+         */
+        function renderEventEditor(eventId) {
+            currentEditingEventId = eventId;
+
+            if (!eventId || !allEventsData.has(eventId)) {
+                // 清空或隐藏编辑器，显示占位符
+                eventEditorPanel.style.display = 'none';
+                eventPlaceholder.style.display = 'flex';
+                renderEventList(); // 更新列表高亮
+                return;
+            }
+
+            eventPlaceholder.style.display = 'none';
+            eventEditorPanel.style.display = 'block';
+            eventForm.reset(); // 重置表单
+
+            const eventData = allEventsData.get(eventId);
+
+            // 填充表单字段
+            eventIdInput.value = eventData.id;
+            eventNameInput.value = eventData.name;
+            eventTypeSelect.value = eventData.type;
+            eventIsRootCheckbox.checked = eventData.isRoot;
+            eventPreconditionsTextarea.value = eventData.preconditions || "";
+            eventMutexConditionsTextarea.value = eventData.mutexConditions || "";
+            eventTimeInput.value = (eventData.time || []).join(',');
+            eventLocationInput.value = (eventData.location || []).join(',');
+            eventWeatherInput.value = (eventData.weather || []).join(',');
+            eventVisibleDescTextarea.value = eventData.visibleDesc || "";
+            eventConditionalDescTextarea.value = (eventData.conditionalDesc || []).join('\n');
+            eventHiddenDescTextarea.value = eventData.hiddenDesc || "";
+            eventVisibleCreaturesInput.value = (eventData.visibleCreatures || []).join(',');
+            eventHiddenCreaturesInput.value = (eventData.hiddenCreatures || []).join(',');
+            eventMaxGainInput.value = eventData.maxGain || "";
+
+            // 渲染选项列表
+            renderOptionsList(eventId);
+
+            // 更新左侧列表高亮
+            renderEventList();
+        }
+
+        /**
+         * @description 渲染指定事件的选项列表
+         * @param {string} eventId - 事件 ID
+         */
+        function renderOptionsList(eventId) {
+            optionsListContainer.innerHTML = ''; // 清空
+            const eventData = allEventsData.get(eventId);
+            if (!eventData || Object.keys(eventData.options).length === 0) {
+                optionsListContainer.innerHTML = '<p class="text-gray-500 italic">暂无选项</p>';
+                return;
+            }
+
+            Object.values(eventData.options).forEach(option => {
+                const item = document.createElement('div');
+                item.classList.add('option-item');
+                item.dataset.optionId = option.id;
+
+                // 查找跳转事件的名称
+                const successEventName = allEventsData.get(option.successEventId)?.name || '无';
+                const failureEventName = allEventsData.get(option.failureEventId)?.name || '无';
+
+                item.innerHTML = `
+                    <h4>
+                        <span>${option.title}</span>
+                        <span class="option-id">ID: ${option.id}</span>
+                        <div>
+                            <button class="btn btn-warning btn-sm edit-option-btn" data-event-id="${eventId}" data-option-id="${option.id}">编辑</button>
+                            <button class="btn btn-danger btn-sm delete-option-btn" data-event-id="${eventId}" data-option-id="${option.id}">删除</button>
+                        </div>
+                    </h4>
+                    <div class="option-details">
+                        <p><strong>文本:</strong> ${option.text || '无'}</p>
+                        ${option.condition ? `<p><strong>条件:</strong> <code>${option.condition}</code></p>` : ''}
+                        ${option.probabilityDisplay ? `<p><strong>概率显示:</strong> <code>${option.probabilityDisplay}</code></p>` : ''}
+                        ${option.functionCall ? `<p><strong>调用函数:</strong> <code>${option.functionCall}</code></p>` : ''}
+                        <p><strong>结束事件:</strong> ${option.isEnd ? '是' : '否'}</p>
+                        <p><strong>成功跳转:</strong> ${successEventName} (${option.successEventId || '无'})</p>
+                        <p><strong>失败跳转:</strong> ${failureEventName} (${option.failureEventId || '无'})</p>
+                        <p><strong>结果效果:</strong> <code>${JSON.stringify(option.resultEffects)}</code></p>
+                    </div>
+                `;
+                optionsListContainer.appendChild(item);
+            });
+
+            // 绑定选项按钮事件 (事件委托)
+            optionsListContainer.removeEventListener('click', handleOptionButtonClick);
+            optionsListContainer.addEventListener('click', handleOptionButtonClick);
+        }
+
+        /**
+         * @description 填充选项模态框中的事件跳转下拉列表
+         */
+        function populateEventIdSelects() {
+            const successSelect = optionSuccessEventIdSelect;
+            const failureSelect = optionFailureEventIdSelect;
+            const currentSuccessValue = successSelect.value; // 保存当前值
+            const currentFailureValue = failureSelect.value;
+
+            successSelect.innerHTML = '<option value="">-- 无跳转 --</option>';
+            failureSelect.innerHTML = '<option value="">-- 无跳转 --</option>';
+
+            // 添加一个“死亡事件”的通用选项（如果存在）
+            const deathEvent = Array.from(allEventsData.values()).find(e => e.name === '死亡事件' && e.type === 'common');
+            if (deathEvent) {
+                 const deathOption = document.createElement('option');
+                 deathOption.value = deathEvent.id;
+                 deathOption.textContent = `[公共] 死亡事件 (${deathEvent.id})`;
+                 successSelect.appendChild(deathOption.cloneNode(true));
+                 failureSelect.appendChild(deathOption);
+            }
+
+
+            // 添加所有事件作为选项
+            Array.from(allEventsData.values())
+                .sort((a, b) => a.name.localeCompare(b.name)) // 按名称排序
+                .forEach(event => {
+                    // 不允许跳转到自身
+                    if (event.id === currentEditingEventId) return;
+
+                    const option = document.createElement('option');
+                    option.value = event.id;
+                    option.textContent = `${event.name} (${event.id})${event.isRoot ? '🌳' : ''}${event.type === 'common' ? '⚙️' : ''}${event.type === 'combat' ? '⚔️' : ''}`;
+                    successSelect.appendChild(option.cloneNode(true));
+                    failureSelect.appendChild(option);
+                });
+
+            // 恢复之前选中的值
+            successSelect.value = currentSuccessValue;
+            failureSelect.value = currentFailureValue;
+        }
+
+        // --- 事件处理函数 ---
+
+        /**
+         * @description 处理左侧事件列表的点击事件 (事件委托)
+         * @param {Event} event
+         */
+        function handleEventListClick(event) {
+            const target = event.target;
+            const listItem = target.closest('.event-list-item');
+            const editButton = target.closest('.edit-event-btn');
+            const deleteButton = target.closest('.delete-event-btn');
+
+            if (editButton) {
+                const eventId = editButton.dataset.eventId;
+                renderEventEditor(eventId);
+            } else if (deleteButton) {
+                const eventId = deleteButton.dataset.eventId;
+                const eventData = allEventsData.get(eventId);
+                if (eventData && confirm(`确定要删除事件 "${eventData.name}" (${eventId}) 吗？`)) {
+                    allEventsData.delete(eventId);
+                    // 如果删除的是当前正在编辑的事件，则清空编辑器
+                    if (currentEditingEventId === eventId) {
+                        renderEventEditor(null);
+                    }
+                    renderEventList(); // 刷新列表
+                    console.log(`事件 ${eventId} 已删除`);
+                }
+            } else if (listItem) {
+                // 点击列表项本身，加载到编辑器
+                const eventId = listItem.dataset.eventId;
+                renderEventEditor(eventId);
+            }
+        }
+
+        /**
+         * @description 处理选项列表中的按钮点击 (事件委托)
+         * @param {Event} event
+         */
+        function handleOptionButtonClick(event) {
+            const target = event.target;
+            const editButton = target.closest('.edit-option-btn');
+            const deleteButton = target.closest('.delete-option-btn');
+
+            if (editButton) {
+                const eventId = editButton.dataset.eventId;
+                const optionId = editButton.dataset.optionId;
+                openOptionModal('edit', eventId, optionId);
+            } else if (deleteButton) {
+                const eventId = deleteButton.dataset.eventId;
+                const optionId = deleteButton.dataset.optionId;
+                const eventData = allEventsData.get(eventId);
+                if (eventData && eventData.options[optionId] && confirm(`确定要删除选项 "${eventData.options[optionId].title}" (${optionId}) 吗？`)) {
+                    delete eventData.options[optionId];
+                    renderOptionsList(eventId); // 刷新选项列表
+                    console.log(`事件 ${eventId} 中的选项 ${optionId} 已删除`);
+                }
+            }
+        }
+
+
+        /**
+         * @description 处理新建事件按钮点击
+         */
+        function handleNewEventClick() {
+            const newEvent = createNewEventObject();
+            allEventsData.set(newEvent.id, newEvent);
+            renderEventList(); // 刷新列表
+            renderEventEditor(newEvent.id); // 加载新事件到编辑器
+            console.log(`新事件 ${newEvent.id} 已创建`);
+        }
+
+        /**
+         * @description 处理搜索框输入
+         */
+        function handleSearchInputChange() {
+            currentSearchTerm = searchInput.value;
+            renderEventList(); // 根据新关键词重新渲染列表
+        }
+
+        /**
+         * @description 处理筛选下拉框变化
+         */
+        function handleFilterChange() {
+            currentEventFilter = filterSelect.value;
+            renderEventList(); // 根据新筛选条件重新渲染列表
+        }
+
+        /**
+         * @description 处理保存事件按钮点击
+         */
+        function handleSaveEventClick() {
+            if (!currentEditingEventId) return;
+            updateEventDataFromForm(currentEditingEventId);
+            renderEventList(); // 更新列表可能变化的名称或标记
+            alert(`事件 "${allEventsData.get(currentEditingEventId)?.name}" 已保存！`);
+            console.log(`事件 ${currentEditingEventId} 已保存`);
+        }
+
+        /**
+         * @description 处理取消编辑按钮点击
+         */
+        function handleCancelEditClick() {
+            renderEventEditor(null); // 清空编辑器
+        }
+
+        /**
+         * @description 处理添加选项按钮点击
+         */
+        function handleAddOptionClick() {
+            if (!currentEditingEventId) {
+                alert("请先选择或创建一个事件！");
+                return;
+            }
+            openOptionModal('add', currentEditingEventId);
+        }
+
+        /**
+         * @description 处理选项模态框保存按钮点击
+         * @param {Event} event
+         */
+        function handleOptionModalSave(event) {
+            event.preventDefault(); // 阻止表单提交
+            const eventId = optionParentEventIdInput.value;
+            const optionId = optionIdInput.value; // 如果是编辑模式，这里有值
+
+            if (!eventId || !allEventsData.has(eventId)) {
+                alert("错误：找不到父事件！");
+                return;
+            }
+
+            if (currentEditingOptionId) {
+                // 编辑模式
+                updateOptionDataFromForm(eventId, currentEditingOptionId);
+                console.log(`事件 ${eventId} 中的选项 ${currentEditingOptionId} 已更新`);
+            } else {
+                // 新增模式
+                const newOption = createNewOptionObject();
+                allEventsData.get(eventId).options[newOption.id] = newOption;
+                updateOptionDataFromForm(eventId, newOption.id); // 用表单数据填充新选项
+                console.log(`事件 ${eventId} 中已添加新选项 ${newOption.id}`);
+            }
+
+            renderOptionsList(eventId); // 刷新右侧选项列表
+            closeOptionModal();
+        }
+
+        /**
+         * @description 处理导入按钮点击
+         */
+        function handleImportClick() {
+            importFile.click();
+        }
+
+        /**
+         * @description 处理导入文件选择
+         * @param {Event} event
+         */
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    // 简单验证是否是 Map 的序列化形式 (数组套数组)
+                    if (Array.isArray(importedData) && importedData.every(item => Array.isArray(item) && item.length === 2 && typeof item[0] === 'string')) {
+                        allEventsData = new Map(importedData);
+                        currentEditingEventId = null; // 清空当前编辑
+                        renderEventList();
+                        renderEventEditor(null); // 清空编辑器
+                        alert(`成功导入 ${allEventsData.size} 个事件！`);
+                        console.log("事件数据已导入");
+                    } else {
+                        throw new Error("文件格式无效，期望是 Map 的 JSON 序列化格式。");
+                    }
+                } catch (error) {
+                    console.error("导入事件失败:", error);
+                    alert(`导入失败: ${error.message}`);
+                } finally {
+                    importFile.value = ''; // 清空文件选择
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        /**
+         * @description 处理导出按钮点击
+         */
+        function handleExportClick() {
+            if (allEventsData.size === 0) {
+                alert("没有事件可以导出！");
+                return;
+            }
+            try {
+                // 将 Map 转换为数组再序列化
+                const dataToExport = JSON.stringify(Array.from(allEventsData.entries()), null, 2); // 格式化输出
+                const blob = new Blob([dataToExport], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'game_events_data.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                console.log("事件数据已导出");
+            } catch (error) {
+                console.error("导出事件失败:", error);
+                alert(`导出失败: ${error.message}`);
+            }
+        }
+
+
+        // --- 模态框控制 ---
+
+        /**
+         * @description 打开选项编辑/新增模态框
+         * @param {'add' | 'edit'} mode - 模式
+         * @param {string} eventId - 父事件 ID
+         * @param {string | null} [optionId=null] - 如果是编辑模式，传入选项 ID
+         */
+        function openOptionModal(mode, eventId, optionId = null) {
+            optionForm.reset(); // 重置表单
+            currentEditingOptionId = null; // 重置编辑状态
+
+            const eventData = allEventsData.get(eventId);
+            if (!eventData) return;
+
+            optionParentEventIdInput.value = eventId; // 设置隐藏的父事件 ID
+
+            // 填充事件跳转下拉列表
+            populateEventIdSelects();
+
+            if (mode === 'edit' && optionId && eventData.options[optionId]) {
+                // 编辑模式
+                currentEditingOptionId = optionId;
+                const optionData = eventData.options[optionId];
+                optionModalTitle.textContent = `编辑选项 (${optionId})`;
+                optionIdInput.value = optionId; // 设置隐藏的选项 ID
+                optionTitleInput.value = optionData.title;
+                optionIsEndCheckbox.checked = optionData.isEnd;
+                optionTextTextarea.value = optionData.text;
+                optionConditionTextarea.value = optionData.condition || "";
+                optionProbabilityDisplayTextarea.value = optionData.probabilityDisplay || "";
+                optionFunctionCallTextarea.value = optionData.functionCall || "";
+                optionSuccessEventIdSelect.value = optionData.successEventId || "";
+                optionFailureEventIdSelect.value = optionData.failureEventId || "";
+                optionResultEffectsTextarea.value = JSON.stringify(optionData.resultEffects || [], null, 2); // 格式化显示
+
+            } else {
+                // 新增模式
+                optionModalTitle.textContent = `为事件 "${eventData.name}" 添加新选项`;
+                optionIdInput.value = ""; // 清空选项 ID
+                optionResultEffectsTextarea.value = '[]'; // 默认空数组
+            }
+
+            optionModal.style.display = 'flex';
+        }
+
+        /**
+         * @description 关闭选项编辑/新增模态框
+         */
+        function closeOptionModal() {
+            optionModal.style.display = 'none';
+            currentEditingOptionId = null; // 清除编辑状态
+        }
+
+
+        // --- 初始化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Initializing Event Manager...");
+
+            // 获取 DOM 引用
+            eventListContainer = document.getElementById('event-list');
+            searchInput = document.getElementById('search-event-input');
+            filterSelect = document.getElementById('filter-event-select');
+            eventEditorPanel = document.getElementById('event-editor-panel');
+            eventForm = document.getElementById('event-form');
+            eventIdInput = document.getElementById('event-id');
+            eventNameInput = document.getElementById('event-name');
+            eventTypeSelect = document.getElementById('event-type');
+            eventIsRootCheckbox = document.getElementById('event-is-root');
+            eventPreconditionsTextarea = document.getElementById('event-preconditions');
+            eventMutexConditionsTextarea = document.getElementById('event-mutex-conditions');
+            eventTimeInput = document.getElementById('event-time');
+            eventLocationInput = document.getElementById('event-location');
+            eventWeatherInput = document.getElementById('event-weather');
+            eventVisibleDescTextarea = document.getElementById('event-visible-desc');
+            eventConditionalDescTextarea = document.getElementById('event-conditional-desc');
+            eventHiddenDescTextarea = document.getElementById('event-hidden-desc');
+            eventVisibleCreaturesInput = document.getElementById('event-visible-creatures');
+            eventHiddenCreaturesInput = document.getElementById('event-hidden-creatures');
+            eventMaxGainInput = document.getElementById('event-max-gain');
+            optionsListContainer = document.getElementById('options-list');
+            addOptionBtn = document.getElementById('add-option-btn');
+            saveEventBtn = document.getElementById('save-event-btn');
+            cancelEditBtn = document.getElementById('cancel-edit-btn');
+            newEventBtn = document.getElementById('new-event-btn');
+            eventPlaceholder = document.getElementById('event-placeholder');
+            optionModal = document.getElementById('option-modal');
+            optionModalCloseBtn = document.getElementById('option-modal-close-btn');
+            optionModalTitle = document.getElementById('option-modal-title');
+            optionForm = document.getElementById('option-form');
+            optionIdInput = document.getElementById('option-id');
+            optionParentEventIdInput = document.getElementById('option-parent-event-id');
+            optionTitleInput = document.getElementById('option-title');
+            optionIsEndCheckbox = document.getElementById('option-is-end');
+            optionTextTextarea = document.getElementById('option-text');
+            optionConditionTextarea = document.getElementById('option-condition');
+            optionProbabilityDisplayTextarea = document.getElementById('option-probability-display');
+            optionFunctionCallTextarea = document.getElementById('option-function-call');
+            optionSuccessEventIdSelect = document.getElementById('option-success-event-id');
+            optionFailureEventIdSelect = document.getElementById('option-failure-event-id');
+            optionResultEffectsTextarea = document.getElementById('option-result-effects');
+            optionModalCancelBtn = document.getElementById('option-modal-cancel-btn');
+            optionModalSaveBtn = document.getElementById('option-modal-save-btn');
+            importBtn = document.getElementById('import-events-btn');
+            exportBtn = document.getElementById('export-events-btn');
+            importFile = document.getElementById('import-events-file');
+
+
+            // 绑定事件监听器
+            newEventBtn.addEventListener('click', handleNewEventClick);
+            searchInput.addEventListener('input', handleSearchInputChange);
+            filterSelect.addEventListener('change', handleFilterChange);
+            saveEventBtn.addEventListener('click', handleSaveEventClick);
+            cancelEditBtn.addEventListener('click', handleCancelEditClick);
+            addOptionBtn.addEventListener('click', handleAddOptionClick);
+            optionModalCloseBtn.addEventListener('click', closeOptionModal);
+            optionModalCancelBtn.addEventListener('click', closeOptionModal);
+            optionForm.addEventListener('submit', handleOptionModalSave);
+            importBtn.addEventListener('click', handleImportClick);
+            importFile.addEventListener('change', handleImportFile);
+            exportBtn.addEventListener('click', handleExportClick);
+
+            // 初始加载/渲染
+            // TODO: 可以尝试从 localStorage 加载数据
+            renderEventList(); // 初始渲染空列表或加载的数据
+            renderEventEditor(null); // 初始隐藏编辑器
+
+            console.log("Event Manager Initialized.");
+
+             // 添加一些示例数据 (可选)
+             /*
+             const evt1 = createNewEventObject();
+             evt1.name = "森林入口";
+             evt1.isRoot = true;
+             evt1.visibleDesc = "你站在一片茂密的森林边缘...";
+             const opt1_1 = createNewOptionObject();
+             opt1_1.title = "进入森林";
+             opt1_1.text = "你决定深入...";
+             opt1_1.successEventId = "evt_placeholder_path"; // 指向一个尚不存在的事件
+             evt1.options[opt1_1.id] = opt1_1;
+             const opt1_2 = createNewOptionObject();
+             opt1_2.title = "离开";
+             opt1_2.text = "你转身离开...";
+             opt1_2.isEnd = true;
+             evt1.options[opt1_2.id] = opt1_2;
+             allEventsData.set(evt1.id, evt1);
+
+             const evt_death = createNewEventObject();
+             evt_death.name = "死亡事件";
+             evt_death.type = "common";
+             evt_death.visibleDesc = "你死了...";
+             const opt_death_end = createNewOptionObject();
+             opt_death_end.title = "结束游戏";
+             opt_death_end.isEnd = true;
+             evt_death.options[opt_death_end.id] = opt_death_end;
+             allEventsData.set(evt_death.id, evt_death);
+
+             renderEventList();
+             */
+
+        });
+
+    </script>
+
+</body>
+</html>

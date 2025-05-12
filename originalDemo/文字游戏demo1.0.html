@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字游戏</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        #角色信息 {
+            width: 30%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            overflow: auto;
+        }
+        #事件信息 {
+            width: 70%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #e9e9e9;
+            overflow: auto;
+        }
+        #地图 {
+            width: 30%;
+            height: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #d9d9d9;
+            margin-top: auto;
+            overflow: auto;
+        }
+        .属性输入 {
+            margin-bottom: 10px;
+        }
+        .技能输入 {
+            margin-bottom: 10px;
+        }
+        .技能输入 input {
+            margin-right: 5px;
+        }
+        .地图输入 {
+            margin-bottom: 10px;
+        }
+        .地图输入 input {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="角色信息">
+        <h2>角色信息</h2>
+        <div class="属性输入">
+            <label>角色名: <input type="text" id="角色名" /></label></label>
+        </div>
+        <div class="属性输入">
+            <label>年龄: <input type="number" id="年龄" /></label>
+        </div>
+        <div class="属性输入">
+            <label>力量: <input type="number" id="力量" /></label>
+        </div>
+        <div class="属性输入">
+            <label>敏捷: <input type="number" id="敏捷" /></label>
+        </div>
+        <div class="属性输入">
+            <label>体质: <input type="number" id="体质" /></label>
+        </div>
+        <div class="属性输入">
+            <label>智力: <input type="number" id="智力" /></label>
+        </div>
+        <div class="属性输入">
+            <label>魅力: <input type="number" id="魅力" /></label>
+        </div>
+        <div class="属性输入">
+            <label>感知: <input type="number" id="感知" /></label>
+        </div>
+
+        <div class="属性输入">
+            <label>血条上限: <span id="血条上限"></span></label>
+        </div>
+        <div class="属性输入">
+            <label>当前血量: <span id="当前血量"></span></label>
+        </div>
+        <div class="属性输入">
+            <label>蓝条上限: <span id="蓝条上限"></span></label>
+        </div>
+        <div class="属性输入">
+            <label>当前蓝条: <span id="当前蓝条"></span></label>
+        </div>
+        
+        <h3>技能</h3>
+        <div id="技能列表"></div>
+        <button id="新增技能">新增技能</button>
+
+        <div class="属性输入">
+            <label>背景故事:</label>
+            <textarea id="背景故事" rows="4" style="width: 100%;"></textarea>
+        </div>
+
+        <button id="保存">保存修改</button>
+        <button id="导出角色">导出角色</button>
+        <input type="file" id="导入角色" style="display: none;" />
+        <button id="选择文件">导入角色</button>
+    </div>
+
+    <div id="事件信息">
+        <h2 id="事件名"></h2>
+        <div>
+            <p id="当前事件文本记录"></p>
+            <div id="可选选项容器"></div>
+            
+            <!-- 新增自由行动输入框和按钮 -->
+            <div style="margin-top: 20px;">
+                <textarea id="自由行动输入" placeholder="输入你的自由行动" rows="3" style="width: 100%; margin-bottom: 10px;"></textarea>
+                <button onclick="处理自由行动()">执行自由行动</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="地图">
+        <h2>地理信息</h2>
+        <div id="地理信息">
+            <p id="时间">时间</p>
+            <p id="地点">地点</p>
+            <p id="天气">天气</p>
+            <p id="场景简介">场景简介</p>
+            <p id="生物"></p>
+        </div>
+        <h2>地图</h2>
+        <div id="地图列表"></div>
+    </div>
+
+    <script> 
+class 游戏角色 {
+    constructor(角色名, 年龄, 力量, 敏捷, 体质, 智力, 魅力, 感知) {
+        this.角色名 = 角色名;
+        this.年龄 = 年龄;
+        this.力量 = 力量;
+        this.敏捷 = 敏捷;
+        this.体质 = 体质;
+        this.智力 = 智力;
+        this.魅力 = 魅力;
+        this.感知 = 感知;
+
+        this.血量上限 = 体质 * 10 + 力量 * 2;
+        this.当前血量 = this.血量上限;
+        this.蓝条上限 = 智力 * 10 + 感知 * 2;
+        this.当前蓝条 = this.蓝条上限;
+        this.技能 = [];
+        this.背景故事 = "";
+    }
+}
+
+const 属性枚举 = Object.freeze({ 
+    蚂蚁水平: 1, 
+    婴儿水平: 3,
+    儿童水平: 6,
+    弱于常人水平: 8,
+    平均成年人水平: 10,
+    良好成年人水平: 13,
+    天才水平: 15,
+    人类极限水平: 18,
+    超凡: 20,
+});
+
+const 地图数组 = ["家", "城市",  "商人", "初级地图", "中级地图", "高级地图", "主线剧情", "涩涩"];
+
+let 路边的史莱姆战斗成功选项 = {
+    "前置条件数组" : [],
+    "互斥条件数组" : [],
+
+    "时间" : [],
+    "地点" : [],
+    "天气" : [],
+
+    "事件名" : "路边的史莱姆",
+    "图片" : null,
+    "场景简介" : "你发现路边灌木丛旁边有一只史莱姆。",
+    "可见描述" : "你战胜了这只史莱姆。",
+    "可见生物列表" : [],
+    "隐藏生物列表" : [],
+    "条件描述" : [
+    "if (角色.感知 >= 8) return '史莱姆的肚子里似乎有什么东西。 条件：感知 >= 8'",
+    "if (角色.感知 >= 13) return '你看清了史莱姆肚子里的是一些硬币。 条件：感知 >= 13'"
+        ],
+        
+    "事件层数" : 1,
+    "AI事件层数" : 0,
+    "隐藏描述" : "这只史莱姆可以被驯服。",
+    "最大收益" : "少量金币，史莱姆相关材料，驯服史莱姆",
+    "可选选项" : {
+        1 : {
+            "条件判断": null,
+            "选项标题": "战利品",
+            "选项文本": "搜刮战利品",
+            "概率显示": null,
+            "调用函数": null,
+            "是否结束": true,
+            "成功后事件": null,
+            "失败后事件": null,
+        }
+    },
+}
+
+let 路边的史莱姆 = {
+    "前置条件数组" : [],
+    "互斥条件数组" : [],
+
+    "时间" : [],
+    "地点" : [],
+    "天气" : [],
+
+    "事件名" : "路边的史莱姆",
+    "图片" : null,
+    "场景简介" : "你发现路边灌木丛旁边有一只史莱姆。",
+    "可见描述" : "城外的一片灌木林，相对安全，但也要小心。",
+    "可见生物列表" : [],
+    "隐藏生物列表" : [],
+    "条件描述" : [
+    "if (角色.感知 >= 8) return '史莱姆的肚子里似乎有什么东西。 条件：感知 >= 8'",
+    "if (角色.感知 >= 13) return '你看清了史莱姆肚子里的是一些硬币。 条件：感知 >= 13'",
+    "if (角色.智力 >= 5) return '史莱姆是最弱小的怪物之一，只能欺负儿童。 条件：智力 >= 5'",
+        ],
+        
+    "事件层数" : 1,
+    "AI事件层数" : 0,
+    "隐藏描述" : "这只史莱姆可以被驯服。",
+    "最大收益" : "少量金币，史莱姆相关材料，驯服史莱姆",
+    "可选选项" : {
+        1 : {
+            "条件判断": null,
+            "选项标题": "战斗",
+            "选项文本": "你决定把这个史莱姆消灭。",
+            "概率显示": "return 战斗概率(角色, 全部生物列表.史莱姆, 10)",
+            "调用函数": "return 战斗(角色, 全部生物列表.史莱姆, 10)",
+            "是否结束": false,
+            "成功后事件": 路边的史莱姆战斗成功选项,
+            "失败后事件": null,
+        },
+
+        2 : {
+            "条件判断": null,
+            "选项标题": "逃跑",
+            "选项文本": "安全第一，还是不要招惹路边的怪物。",
+            "概率显示": null,
+            "调用函数": null,
+            "是否结束": false,
+            "成功后事件": null,
+            "失败后事件": null,
+        },
+        3 : {
+            "条件判断": "return 角色.魅力 >= 10;",
+            "选项标题": "驯服",
+            "选项文本": "你发现这史莱姆长得也是眉清目秀。",
+            "概率显示": null,
+            "调用函数": null,
+            "是否结束": false,
+            "成功后事件": null,
+            "失败后事件": null,
+        },
+    },
+}
+
+// 更新血量和蓝条信息
+function 更新血条和蓝条() {
+    document.getElementById("血条上限").textContent = player.血量上限;
+    document.getElementById("当前血量").textContent = player.当前血量;
+    document.getElementById("蓝条上限").textContent = player.蓝条上限;
+    document.getElementById("当前蓝条").textContent = player.当前蓝条;
+}
+
+// 显示技能
+function 更新技能列表() {
+    const 技能列表 = document.getElementById("技能列表");
+    技能列表.innerHTML = '';
+    player.技能.forEach((技能, index) => {
+        const skillDiv = document.createElement("div");
+        skillDiv.className = "技能输入";
+        skillDiv.innerHTML = `
+            <input type="text" value="${技能}" />
+            <button class="删除技能">删除</button>
+        `;
+        skillDiv.querySelector(".删除技能").addEventListener("click", () => {
+            player.技能.splice(index, 1);
+            更新技能列表();
+        });
+        技能列表.appendChild(skillDiv);
+    });
+}
+
+function 初始化角色面板 (player) {
+            
+    document.getElementById("角色名").value = player.角色名;
+    document.getElementById("年龄").value = player.年龄;
+    document.getElementById("力量").value = player.力量;
+    document.getElementById("敏捷").value = player.敏捷;
+    document.getElementById("体质").value = player.体质;
+    document.getElementById("智力").value = player.智力;
+    document.getElementById("魅力").value = player.魅力;
+    document.getElementById("感知").value = player.感知;
+    document.getElementById("背景故事").value = player.背景故事;
+    
+    // 新增技能
+    document.getElementById("新增技能").addEventListener("click", () => {
+        player.技能.push("");
+        更新技能列表();
+    });
+
+    // 保存修改的功能
+    document.getElementById("保存").addEventListener("click", () => {
+        player.角色名 = document.getElementById("角色名").value;
+        player.年龄 = parseInt(document.getElementById("年龄").value);
+        player.力量 = parseInt(document.getElementById("力量").value);
+        player.敏捷 = parseInt(document.getElementById("敏捷").value);
+        player.体质 = parseInt(document.getElementById("体质").value);
+        player.智力 = parseInt(document.getElementById("智力").value);
+        player.魅力 = parseInt(document.getElementById("魅力").value);
+        player.感知 = parseInt(document.getElementById("感知").value);
+        player.背景故事 = document.getElementById("背景故事").value;
+
+        // 更新血条和蓝条
+        player.血量上限 = player.体质 * 10 + player.力量 * 2;
+        player.蓝条上限 = player.智力 * 10 + player.感知 * 2;
+        player.当前血量 = player.血量上限;  // 可以根据需要设置当前血量
+        player.当前蓝条 = player.蓝条上限;  // 可以根据需要设置当前蓝条
+
+        player.技能 = Array.from(document.querySelectorAll("#技能列表 input")).map(input => input.value);
+
+        console.log(player);
+        更新血条和蓝条();
+        显示事件信息(事件加载(player, 当前事件));
+    });
+
+    // 导出
+    // 导出角色功能
+    document.getElementById("导出角色").addEventListener("click", () => {
+        const json = JSON.stringify(player, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "角色信息.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // 导入角色功能
+    document.getElementById("选择文件").addEventListener("click", () => {
+        document.getElementById("导入角色").click();
+    });
+
+    document.getElementById("导入角色").addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported角色 = JSON.parse(e.target.result);
+                    Object.assign(player, imported角色);
+                    更新技能列表();
+                    更新血条和蓝条();
+
+                    // 更新显示的角色信息
+                    document.getElementById("角色名").value = player.角色名;
+                    document.getElementById("年龄").value = player.年龄;
+                    document.getElementById("力量").value = player.力量;
+                    document.getElementById("敏捷").value = player.敏捷;
+                    document.getElementById("体质").value = player.体质;
+                    document.getElementById("智力").value = player.智力;
+                    document.getElementById("魅力").value = player.魅力;
+                    document.getElementById("感知").value = player.感知;
+                    document.getElementById("背景故事").value = player.背景故事;
+
+                    更新血条和蓝条();
+                } catch (error) {
+                    alert("导入的文件格式不正确，请检查文件。");
+                }
+            };
+            reader.readAsText(file);
+        }
+    });
+}
+        const player = new 游戏角色("张三", 25, 13, 9, 10, 10, 10, 10);
+        player.技能.push("冲锋");
+        player.背景故事 = "是个雇佣兵。";
+
+        初始化角色面板(player);
+        更新血条和蓝条();
+        更新技能列表();
+        更新地图列表();
+        let 当前事件 = null;
+
+        
+class 事件class {
+    constructor() { 
+        this.ID = generateSimpleV4UUID();
+        this.事件名; 
+
+        this.事件序列; 
+        this.场景简介;
+        this.生物列表;
+        this.可见描述;
+        this.条件描述;
+        this.隐藏描述;
+        this.角色 = [];
+
+        this.可能收益;
+
+        this.可选选项 = [];
+
+    }
+}
+
+function 事件加载(角色, value) {
+    var 事件 = new 事件class();
+    事件.事件名 = value.事件名 || '未知事件';
+    事件.事件序列 = value.事件序列 || [];
+    事件.场景简介 = value.场景简介 || '无场景简介';
+    事件.可见描述 = value.可见描述 || '无可见描述';
+    事件.条件描述 = value.条件描述 || [];
+    事件.隐藏描述 = value.隐藏描述 || '';
+    事件.可选选项 = value.可选选项 || {};
+    事件.可能收益 = value.可能收益 || '';
+
+    // 确保条件描述是数组
+    if (Array.isArray(事件.条件描述)) {
+        事件.条件描述.forEach(element => {
+            let func = new Function('角色', element);
+            var v = func(角色);
+            if (v != null) {
+                事件.条件描述.push(func(角色));
+            }
+        });
+    }
+
+    return 事件;
+}
+
+
+function generateSimpleV4UUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = (Math.random() * 16) | 0,
+            v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+    });
+}
+
+let 全部生物列表 = {
+    "史莱姆" : {力量 : 6, 敏捷 : 5},
+    "普通盗贼" : {力量 : 10, 敏捷 : 10},
+    "精英盗贼" : {力量 : 12, 敏捷 : 10},
+    "首领盗贼" : {力量 : 14, 敏捷 : 10},
+};
+
+// 目前demo只考虑力量
+function 战斗概率(玩家, 敌人, 优势) {
+    let num = 玩家.力量 + 优势 - 10 - 敌人.力量;
+    return Math.max(0, Math.min(100, 50 + num * 10));
+}
+function 战斗(玩家, 敌人, 优势) { 
+    const percentage = 战斗概率(玩家, 敌人, 优势);
+    const randomValue = Math.random(); // 生成0到1之间的随机数
+    return randomValue <= percentage / 100; // 比较随机数与百分比概率
+}
+
+function 清空事件显示() { 
+    // 处理可选选项
+    const 可选选项容器 = document.getElementById("可选选项容器");
+    // 清空旧内容并创建新结构
+    可选选项容器.innerHTML = "<br><strong>可选选项:</strong><br>"; // 重置容器内容
+    
+    // 移除旧的可选选项列表（如果存在）
+    let 可选选项列表容器 = document.getElementById("可选选项列表");
+    if (可选选项列表容器) {
+        可选选项列表容器.remove();
+    }
+}
+function 清空事件名和文本记录() { 
+    document.getElementById("事件名").innerText = "" + 当前事件.事件名;
+    document.getElementById("当前事件文本记录").innerText = "";
+}
+
+function 显示事件信息(事件) {
+    document.getElementById("时间").innerText = "时间: " + 当前事件.时间
+    document.getElementById("地点").innerText = "地点: " + 当前事件.地点
+    document.getElementById("天气").innerText = "天气: " + 当前事件.天气
+    document.getElementById("场景简介").innerText = "场景简介: " + 当前事件.场景简介
+
+    const 当前事件文本记录 = document.getElementById("当前事件文本记录");
+    当前事件文本记录.innerText += "\n" + 事件.可见描述;
+
+    // 条件描述
+    if (事件.条件描述) {
+        事件.条件描述.forEach(condition => {
+            当前事件文本记录.innerText += "\n" + condition ;
+        });
+    }
+    更新选项(事件);
+
+}
+
+function 更新选项(事件) { 
+
+    const 可选选项容器 = document.getElementById("可选选项容器");
+    let 可选选项列表容器 = document.getElementById("可选选项列表");
+
+    // 清空旧内容并创建新结构
+    可选选项容器.innerHTML = "<br><strong>可选选项:</strong><br>"; // 重置容器内容
+    
+    // 移除旧的可选选项列表（如果存在）
+    if (可选选项列表容器) {
+        可选选项列表容器.remove();
+    }
+    
+    // 创建新的选项容器
+    可选选项列表容器 = document.createElement("div");
+    可选选项列表容器.id = "可选选项列表";
+    可选选项容器.parentNode.insertBefore(可选选项列表容器, 可选选项容器.nextSibling); //等价于 可选选项容器.after(可选选项列表容器) 但是兼容性更好
+
+    
+
+    // 填充新选项
+    console.log(事件.可选选项);
+    let 选项内容 = "";
+    for (let key in 事件.可选选项) {
+        选项内容 += 获取事件可选选项内容(事件.可选选项[key], key, true);
+    }
+    console.log(选项内容);
+    可选选项列表容器.innerHTML = 选项内容;
+}
+
+function 获取事件可选选项内容(事件选项, key, isButton) { 
+    var str = "";
+    if (事件选项.概率显示 != null) { 
+        let func = new Function('角色', 事件选项.概率显示);
+        str += " 成功率: " + func(player) + "% 。"; 
+    }
+    if (事件选项.条件描述 == null) {
+        if (isButton)
+            str = `<button onclick="处理选项点击('${key}', 1)">${事件选项.选项标题}： ` + str + `${事件选项.选项文本}</button><br>`;
+        else
+            str = `<p ">${事件选项.选项标题}： ` + str + `${事件选项.选项文本}</p>`;
+    } else {
+        let func = new Function('角色', 事件选项.条件描述);
+        var v = func(player);
+        if (v != null) {
+            if (isButton)
+                str = `<button onclick="处理选项点击('${key}', 1)">${事件选项.选项标题}： ` + str + `${事件选项.选项文本}</button><br>`;
+            else
+                str = `<p ">${事件选项.选项标题}： ` + str + `</p>`;
+        }
+    }
+    return str;
+}
+
+function 处理选项点击(key, 深度) {
+    let 当前选项 = 当前事件.可选选项[key];
+    console.log(当前选项); 
+
+    //当前的选项写入记录
+    document.getElementById("当前事件文本记录").innerText += "\n\n" + 当前选项.选项文本;
+
+
+//进入下一事件
+    if (当前选项.调用函数 != null) {
+        let func = new Function('角色', 当前选项.调用函数);
+        //执行调用函数
+        let out = func(player); 
+        //没有结束，则进入下一事件
+        if (!当前选项.是否结束)
+            if (out) {
+                当前事件 = 事件加载(player, 当前选项.成功后事件);
+            } else {
+                当前事件 = 事件加载(player, 当前选项.失败后事件);
+            }
+    } else {
+        if (!当前选项.是否结束)
+            当前事件 = 事件加载(player, 当前选项.成功后事件);
+    }
+    //最后的选项
+    if (当前选项.是否结束) {
+        清空事件显示()
+        document.getElementById("可选选项容器").innerHTML = ""; // 重置容器内容
+        return
+    }
+    显示事件信息(当前事件);
+}
+
+function 更新地图列表() {
+    const 地图列表 = document.getElementById("地图列表");
+    地图列表.innerHTML = '';
+    地图数组.forEach((地图, index) => {
+        const skillDiv = document.createElement("div");
+        skillDiv.className = "地图输入";
+        skillDiv.innerHTML = `
+            <button class="点击地图">${地图}</button>
+        `;
+        skillDiv.querySelector(".点击地图").addEventListener("click", () => {
+            console.log(地图)
+            // 调用显示事件信息函数
+            当前事件 = 事件加载(player, 路边的史莱姆);
+            清空事件显示();
+            清空事件名和文本记录();
+            显示事件信息(当前事件);
+        });
+        地图列表.appendChild(skillDiv);
+    });
+}
+async function 处理自由行动() {
+    const apiKey = 'sk-b40f561ae11c4b14a05e40f10d2fc8fd';
+    const 自由行动 = document.getElementById('自由行动输入').value;
+    
+    // 准备发送给AI的数据，包括当前事件信息和玩家信息
+    const aiPrompt = `当前事件：${当前事件.事件名 || '无'}
+场景简介：${当前事件.场景简介 || '无'}
+可见描述：${当前事件.可见描述 || '无'}
+玩家信息：${player.角色名}，年龄${player.年龄}，力量${player.力量}，敏捷${player.敏捷}，体质${player.体质}，智力${player.智力}，魅力${player.魅力}，感知${player.感知}
+玩家的自由行动：${自由行动}
+
+请根据以上信息，生成一个事件JSON，格式参考以下示例：
+${JSON.stringify(路边的史莱姆, null, 2)}
+
+如果没有对应的内容，请留空，不要添加额外的字段。最后请输出流式响应过程和最终的JSON结果。`;
+    
+    try {
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat", // 切换到v3模型
+                messages: [
+                    { role: "system", content: "根据玩家的自由行动生成事件JSON" },
+                    { role: "user", content: aiPrompt }
+                ],
+                max_tokens: 1000,
+                response_format: {
+                    type: 'json_object' // 启用JSON输出
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP错误! 状态码: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let 完整响应 = '';
+        
+        while(true) {
+            const { done, value } = await reader.read();
+            if(done) break;
+
+            const chunk = decoder.decode(value);
+            完整响应 += chunk;
+        }
+        console.log("完整响应");
+        console.log(完整响应);
+        
+        // 解析最终的JSON响应
+        try {
+            const jsonStart = 完整响应.indexOf('{');
+            const jsonEnd = 完整响应.lastIndexOf('}') + 1;
+            const jsonStr = 完整响应.substring(jsonStart, jsonEnd);
+            const ai生成的事件 = JSON.parse(jsonStr);
+            
+            // 更新当前事件并显示
+            当前事件 = 事件加载(player, ai生成的事件);
+            显示事件信息(当前事件);
+            
+        } catch (e) {
+            console.error('JSON解析错误:', e);
+            alert('AI返回的响应格式不正确，请检查日志');
+        }
+        
+    } catch(error) {
+        console.error('调用AI接口错误:', error);
+        if (error.message.includes('401')) {
+            alert('API密钥无效或未设置，请检查你的API密钥');
+        } else {
+            alert('AI接口调用失败，请检查网络或API密钥');
+        }
+    }
+}
+
+// 调用显示事件信息函数
+当前事件 = 事件加载(player, 路边的史莱姆);
+清空事件显示();
+清空事件名和文本记录();
+显示事件信息(当前事件);
+
+    </script>
+</body>
+</html>

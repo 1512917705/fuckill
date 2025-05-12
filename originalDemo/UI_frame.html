@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏UI Demo (v15 - 管理员模式入口)</title> <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative; /* 为覆盖层定位提供基础 */
+        }
+        /* 菜单栏样式 */
+        .top-menu-bar {
+            background-color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+        .menu-left { /* 新增：用于包裹左侧标题和世界选择 */
+            display: flex;
+            align-items: center;
+            gap: 1.5rem; /* 标题和世界选择之间的间距 */
+        }
+        .menu-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #111827;
+        }
+        .settings-dropdown {
+            position: relative;
+        }
+        .settings-button {
+            background-color: transparent;
+            border: none;
+            color: #4b5563;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s ease;
+        }
+        .settings-button:hover {
+            background-color: #e5e7eb;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0 8px 16px 0 rgba(0,0,0,0.1);
+            z-index: 50; /* 比菜单栏高 */
+            border-radius: 0.375rem;
+            overflow: hidden;
+            margin-top: 0.25rem;
+        }
+        .dropdown-content a {
+            color: #374151;
+            padding: 0.75rem 1rem;
+            text-decoration: none;
+            display: block;
+            font-size: 0.875rem;
+            transition: background-color 0.2s ease;
+        }
+        .dropdown-content a:hover {
+            background-color: #f3f4f6;
+        }
+        .dropdown-content.show {
+            display: block;
+        }
+
+        /* 主容器样式 */
+        .main-container {
+            display: flex;
+            flex-grow: 1;
+            gap: 1rem;
+            padding: 1rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .module {
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .module-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            color: #111827;
+        }
+        .module-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f3f4f6;
+             position: relative;
+             z-index: 1;
+        }
+        .module-content::-webkit-scrollbar { width: 6px; }
+        .module-content::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 3px; }
+        .module-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+
+        /* --- 省略其他未修改的样式 --- */
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn:hover { filter: brightness(1.05); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .btn:active { transform: scale(0.98); filter: brightness(0.95); }
+        .btn-primary { background-color: #60a5fa; color: white; border-color: #3b82f6; }
+        .btn-secondary { background-color: #9ca3af; color: white; border-color: #6b7280; }
+        .btn-danger { background-color: #f87171; color: white; border-color: #ef4444; }
+        .btn-warning { background-color: #fbbf24; color: #422006; border-color: #f59e0b; }
+        .btn-success { background-color: #4ade80; color: #064e3b; border-color: #22c55e; }
+        .btn-info { background-color: #67e8f9; color: #0e7490; border-color: #22d3ee; }
+        .btn-blue { background-color: #60a5fa; color: white; border-color: #3b82f6; }
+        .btn-outline { background-color: transparent; border-color: currentColor; }
+        .btn-outline-gray { color: #4b5563; border-color: #d1d5db; }
+        .btn-outline-gray:hover { background-color: #f3f4f6; }
+        .btn-sm { padding: 0.25rem 0.75rem; font-size: 0.875rem; }
+
+        .bar-label-group { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .bar-label { font-size: 0.875rem; font-weight: 500; width: 4rem; flex-shrink: 0; }
+        .bar-label-hp { color: #dc2626; }
+        .bar-label-mp { color: #2563eb; }
+        .progress-bar-container { background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; height: 1rem; position: relative; flex-grow: 1; }
+        .progress-bar { height: 100%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 600; color: white; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
+        .progress-bar-hp { background-color: #ef4444; }
+        .progress-bar-mp { background-color: #3b82f6; }
+
+        .collapsible-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.25rem 0; position: relative; z-index: 2; background-color: #fff; }
+        .collapsible-header:hover { background-color: #f9fafb; }
+        .collapsible-title { font-size: 0.875rem; font-semibold: 500; color: #4b5563; }
+        .collapsible-summary { font-size: 0.8rem; color: #6b7280; flex-grow: 1; text-align: right; margin-right: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .collapsible-icon { transition: transform 0.3s ease; color: #9ca3af; }
+        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; position: relative; z-index: 1; }
+        .collapsible-content.expanded { max-height: 1000px; transition: max-height 0.5s ease-in; overflow: visible; }
+        .collapsible-header.expanded .collapsible-icon { transform: rotate(90deg); }
+
+        #status-section .collapsible-header { cursor: default; }
+        #status-section .collapsible-header:hover { background-color: transparent; }
+        #status-section .collapsible-icon { display: none; }
+        #status-section #status-content { max-height: none; overflow: visible; }
+
+
+        .stat-item { background-color: #f9fafb; padding: 0.5rem 0.75rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; font-size: 0.875rem; display: flex; justify-content: space-between; align-items: center; }
+        .stat-label { color: #6b7280; }
+        .stat-value { font-weight: 600; color: #1f2937; }
+
+        .attr-adjust-btn { background-color: #d1d5db; border: none; color: #374151; padding: 0 0.3rem; border-radius: 0.25rem; cursor: pointer; font-weight: bold; font-size: 0.8rem; line-height: 1; margin: 0 0.2rem; }
+        .attr-adjust-btn:hover { background-color: #9ca3af; }
+
+        .item-display { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0.25rem; border-radius: 0.25rem; }
+        .item-icon { width: 3rem; height: 3rem; background-color: #e5e7eb; border: 1px solid #d1d5db; border-radius: 0.375rem; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: #6b7280; position: relative; margin-bottom: 0.25rem; }
+        .item-icon:hover { background-color: #d1d5db; }
+        .item-name { font-size: 0.75rem; color: #4b5563; line-height: 1.2; max-width: 3.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .item-count { position: absolute; bottom: -2px; right: -2px; background-color: rgba(0, 0, 0, 0.6); color: white; font-size: 0.7rem; padding: 0 4px; border-radius: 4px; }
+
+        .status-item { display: inline-block; margin-right: 1rem; margin-bottom: 0.25rem; position: relative; z-index: 10; }
+        .status-text { font-medium: 500; text-sm: 0.875rem; cursor: default; }
+        .status-positive { color: #1d4ed8; }
+        .status-positive-alt { color: #059669; }
+        .status-negative { color: #dc2626; }
+
+        .equipment-item { position: relative; }
+        .equipment-item .stat-item { cursor: default; }
+
+        .map-tile { width: 100%; aspect-ratio: 1 / 1; border: 1px solid #d1d5db; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; font-size: 1.25rem; position: relative; background-color: #e2f0d9; color: #548235; }
+        .map-tile:hover { background-color: #c9e4b8; transform: scale(1.05); }
+        .map-tile.player-location { box-shadow: 0 0 0 3px #fbbf24 inset; z-index: 10; }
+        .map-tile.player-location::after { content: '👤'; position: absolute; font-size: 1.5rem; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+        /* 弹窗通用样式 */
+        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 100; /* 提高弹窗层级 */ opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-container { background-color: #ffffff; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 1.5rem 2rem; max-width: 90%; max-height: 90vh; overflow-y: auto; position: relative; transform: scale(0.95); transition: transform 0.3s ease; }
+        .modal-overlay.active .modal-container { transform: scale(1); }
+        .modal-close-btn { position: absolute; top: 0.75rem; right: 1rem; background: none; border: none; font-size: 1.75rem; color: #9ca3af; cursor: pointer; padding: 0; line-height: 1; z-index: 110; }
+        .modal-close-btn:hover { color: #6b7280; }
+        .modal-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #111827; }
+
+        /* 特定弹窗尺寸 */
+        .modal-details { max-width: 600px; }
+        .modal-synthesis { max-width: 1100px; width: 85vw; }
+        .modal-battle { max-width: 1000px; width: 80vw; }
+        .modal-admin { max-width: 400px; } /* 新增：管理员模式弹窗尺寸 */
+
+        /* 合成弹窗样式 */
+        .synthesis-modal-layout { display: flex; gap: 1rem; min-height: 60vh; }
+        .synthesis-column { flex: 1; display: flex; flex-direction: column; background-color: #f9fafb; padding: 1rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; overflow: visible; }
+        #synthesis-inventory-list-container { flex-grow: 1; overflow-y: auto; position: relative; z-index: 1; }
+        #synthesis-inventory-list.icon-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr)); gap: 1rem; padding: 0.5rem; }
+        #synthesis-inventory-list.list-view { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; }
+        #synthesis-inventory-list.list-view .item-display { flex-direction: row; justify-content: space-between; align-items: center; text-align: left; padding: 0.5rem; background-color: #fff; border: 1px solid #e5e7eb; }
+        #synthesis-inventory-list.list-view .item-icon { width: 2rem; height: 2rem; font-size: 1rem; margin-bottom: 0; margin-right: 0.5rem; }
+        #synthesis-inventory-list.list-view .item-name { flex-grow: 1; max-width: none; white-space: normal; }
+        #synthesis-inventory-list.list-view .item-count { position: static; background: none; color: #6b7280; font-size: 0.8rem; padding: 0; border-radius: 0; margin-left: 0.5rem; }
+        #synthesis-inventory-list .tooltip .tooltiptext { bottom: auto; top: 100%; left: 0; transform: none; margin-top: 4px; z-index: 9999; }
+        #synthesis-inventory-list .tooltip .tooltiptext::after { content: none; }
+        .synthesis-area { border: 2px dashed #cbd5e1; min-height: 150px; border-radius: 0.5rem; background-color: #ffffff; padding: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-content: flex-start; margin-bottom: 1rem; }
+        .synthesis-item-icon { width: 3.5rem; height: 3.5rem; }
+        .formula-list { flex-grow: 1; overflow-y: auto; }
+        .formula-item { background-color: #ffffff; padding: 0.5rem; border-radius: 0.25rem; margin-bottom: 0.5rem; font-size: 0.8rem; border: 1px solid #e5e7eb; }
+
+        /* 战斗弹窗样式 */
+        .battle-modal-layout { display: flex; gap: 1rem; max-height: 80vh; }
+        .battle-left-column { width: 35%; display: flex; flex-direction: column; gap: 1rem; }
+        .battle-right-column { width: 65%; display: flex; flex-direction: column; overflow: hidden; }
+        .battle-area { background-color: #f9fafb; padding: 1rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; }
+        .battle-log { flex-grow: 1; border: 1px solid #e5e7eb; border-radius: 0.375rem; padding: 0.75rem; font-size: 0.875rem; overflow-y: auto; margin-bottom: 1rem; background-color: #ffffff; max-height: 400px; min-height: 150px; scrollbar-width: thin; scrollbar-color: #cbd5e1 #f3f4f6; }
+        .battle-log::-webkit-scrollbar { width: 6px; }
+        .battle-log::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 3px; }
+        .battle-log::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+        .battle-log p { margin-bottom: 0.5rem; }
+        .battle-log .log-player { color: #2563eb; }
+        .battle-log .log-enemy { color: #dc2626; }
+        .battle-log .log-system { color: #6b7280; font-style: italic; }
+        .battle-unit { display: flex; align-items: center; gap: 1rem; }
+        .battle-unit-avatar { width: 4rem; height: 4rem; background-color: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: #6b7280; flex-shrink: 0; cursor: pointer; }
+        .battle-unit-avatar:hover { filter: brightness(0.95); }
+        .battle-unit-info { flex-grow: 1; }
+        .battle-skills { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; margin-top: auto; padding-top: 1rem; }
+
+        /* Tooltip 通用样式 */
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltiptext { visibility: hidden; width: max-content; max-width: 250px; background-color: #374151; color: #fff; text-align: left; border-radius: 6px; padding: 8px 12px; position: absolute; z-index: 9999; opacity: 0; transition: opacity 0.3s ease 0.1s, visibility 0.3s ease 0.1s; font-size: 0.8rem; line-height: 1.4; white-space: normal; box-shadow: 0 2px 5px rgba(0,0,0,0.2); pointer-events: none; top: 100%; left: 0; transform: none; margin-top: 4px; }
+        .tooltip .tooltiptext::after { content: none; }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; transition-delay: 0.3s; }
+        #status-section .tooltip .tooltiptext { top: auto; bottom: 115%; left: 50%; transform: translateX(-50%); margin-top: 0; }
+        #status-section .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #374151 transparent transparent transparent; }
+
+        /* 新增：管理员页面覆盖层样式 */
+        .admin-page-overlay {
+            position: fixed; /* 固定定位，覆盖整个视口 */
+            inset: 0; /* 等同于 top:0; right:0; bottom:0; left:0; */
+            background-color: #f3f4f6; /* 背景色与 body 一致 */
+            z-index: 90; /* 层级高于菜单栏，低于弹窗 */
+            display: none; /* 默认隐藏 */
+            flex-direction: column; /* 垂直布局 */
+            overflow-y: auto; /* 内容超出时可滚动 */
+        }
+        .admin-page-overlay.active {
+            display: flex; /* 显示 */
+        }
+        .admin-page-header {
+            background-color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 95; /* 高于内容 */
+        }
+        .admin-page-title {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 600;
+            color: #111827;
+        }
+        .admin-page-content {
+            padding: 1.5rem; /* p-6 */
+            flex-grow: 1; /* 占据剩余空间 */
+        }
+        .admin-back-button {
+            background-color: #6b7280; /* gray-500 */
+            color: white;
+        }
+        .admin-back-button:hover {
+            background-color: #4b5563; /* gray-600 */
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 1024px) {
+            .main-container { flex-direction: column; }
+            .module { min-height: auto; }
+            .battle-modal-layout { flex-direction: column; max-height: 90vh; }
+            .battle-left-column, .battle-right-column { width: 100%; }
+            .battle-log { max-height: 250px; }
+            .top-menu-bar { padding: 0.5rem 1rem; }
+            .menu-title { font-size: 1.125rem; }
+            .settings-button { font-size: 1.125rem; }
+            .admin-page-header { padding: 0.5rem 1rem; } /* 调整管理页面头部内边距 */
+            .admin-page-title { font-size: 1rem; }
+        }
+        @media (max-width: 768px) {
+            .synthesis-modal-layout { flex-direction: column; width: 90vw; }
+            .modal-battle { width: 90vw; }
+            .battle-skills { gap: 0.5rem; }
+            .btn { padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+            .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+            .item-icon { width: 2.5rem; height: 2.5rem; font-size: 1rem; }
+            .item-name { max-width: 3rem; }
+            #inventory-list { grid-template-columns: repeat(auto-fill, minmax(3.5rem, 1fr)); }
+            .collapsible-summary { max-width: 100px; }
+            #synthesis-inventory-list.icon-view { grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr)); gap: 0.5rem; }
+             .top-menu-bar { padding: 0.5rem 0.75rem; }
+             .menu-title { font-size: 1rem; }
+             .settings-button { font-size: 1rem; padding: 0.4rem; }
+             .admin-page-header { padding: 0.5rem 0.75rem; } /* 进一步调整管理页面头部内边距 */
+        }
+    </style>
+</head>
+<body class="flex flex-col">
+
+    <header class="top-menu-bar">
+        <div class="menu-left"> <div class="menu-title">文字冒险游戏</div>
+            <div class="dropdown" id="world-dropdown">
+                <button id="world-select-btn" class="dropdown-button" aria-label="选择世界">
+                    <span id="current-world-name">艾尔文森林</span> <i class="fas fa-chevron-down icon"></i> </button>
+                <div id="world-dropdown-content" class="dropdown-content">
+                    <a href="#" onclick="handleWorldSelect('艾尔文森林')">艾尔文森林</a>
+                    <a href="#" onclick="handleWorldSelect('死亡矿井')">死亡矿井</a>
+                    <a href="#" onclick="handleWorldSelect('西部荒野')">西部荒野 (示例)</a>
+                </div>
+            </div>
+        </div>
+        <div class="settings-dropdown">
+            <button id="settings-btn" class="settings-button" aria-label="设置">
+                <i class="fas fa-cog"></i>
+            </button>
+            <div id="settings-dropdown-content" class="dropdown-content">
+                <a href="#" onclick="handleMenuClick('user_info')">用户信息</a>
+                <a href="#" onclick="handleMenuClick('import')">导入</a>
+                <a href="#" onclick="handleMenuClick('export')">导出</a>
+                <a href="#" onclick="handleMenuClick('ai_settings')">AI设置</a>
+                <a href="#" onclick="handleMenuClick('admin_mode')">管理员模式</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="module w-full lg:w-1/4">
+            <div class="flex justify-between items-center mb-4">
+                 <h2 class="module-title !mb-0 !pb-0 !border-b-0">人物状态</h2>
+                 <div class="space-x-2">
+                    <button id="details-btn" class="btn btn-info btn-sm">
+                        <i class="fas fa-address-card mr-1"></i>详情
+                    </button>
+                    <button id="synthesis-btn" class="btn btn-warning btn-sm">
+                        <i class="fas fa-magic mr-1"></i>合成
+                    </button>
+                </div>
+            </div>
+            <div class="module-content space-y-3">
+                <div class="space-y-1">
+                    <div class="bar-label-group">
+                        <label class="bar-label bar-label-hp">生命值</label>
+                        <div class="progress-bar-container">
+                            <div id="hp-bar" class="progress-bar progress-bar-hp" style="width: 85%;">85/100</div>
+                        </div>
+                    </div>
+                    <div class="bar-label-group">
+                        <label class="bar-label bar-label-mp">法力值</label>
+                        <div class="progress-bar-container">
+                            <div id="mp-bar" class="progress-bar progress-bar-mp" style="width: 60%;">60/100</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="attributes-section">
+                    <div class="collapsible-header" onclick="toggleCollapse('attributes')">
+                        <h3 class="collapsible-title">核心属性</h3>
+                        <span class="collapsible-summary" id="attributes-summary">力 12 敏 10 体 11 智 15 感 13 魅 9</span>
+                        <i class="fas fa-chevron-right collapsible-icon"></i>
+                    </div>
+                    <div class="collapsible-content" id="attributes-content">
+                        <div class="grid grid-cols-2 gap-2 pt-2">
+                            <div class="stat-item"> <span class="stat-label">力量</span> <div> <button class="attr-adjust-btn">-</button> <span id="attr-str" class="stat-value">12</span> <button class="attr-adjust-btn">+</button> </div> </div>
+                            <div class="stat-item"> <span class="stat-label">敏捷</span> <div> <button class="attr-adjust-btn">-</button> <span id="attr-dex" class="stat-value">10</span> <button class="attr-adjust-btn">+</button> </div> </div>
+                            <div class="stat-item"> <span class="stat-label">体质</span> <div> <button class="attr-adjust-btn">-</button> <span id="attr-con" class="stat-value">11</span> <button class="attr-adjust-btn">+</button> </div> </div>
+                            <div class="stat-item"> <span class="stat-label">智力</span> <div> <button class="attr-adjust-btn">-</button> <span id="attr-int" class="stat-value">15</span> <button class="attr-adjust-btn">+</button> </div> </div>
+                            <div class="stat-item"> <span class="stat-label">感知</span> <div> <button class="attr-adjust-btn">-</button> <span id="attr-wis" class="stat-value">13</span> <button class="attr-adjust-btn">+</button> </div> </div>
+                            <div class="stat-item"> <span class="stat-label">魅力</span> <div> <button class="attr-adjust-btn">-</button> <span id="attr-cha" class="stat-value">9</span> <button class="attr-adjust-btn">+</button> </div> </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="identity-section">
+                     <div class="collapsible-header" onclick="toggleCollapse('identity')"> <h3 class="collapsible-title">身份信息</h3> <span class="collapsible-summary" id="identity-summary">艾瑞克</span> <i class="fas fa-chevron-right collapsible-icon"></i> </div>
+                    <div class="collapsible-content" id="identity-content"> <div class="space-y-1 pt-2"> <div class="stat-item"><span class="stat-label">名称</span><span id="info-name" class="stat-value">艾瑞克</span></div> <div class="stat-item"><span class="stat-label">阵营</span><span id="info-faction" class="stat-value">中立善良</span></div> <div class="stat-item"><span class="stat-label">身份</span><span id="info-identity" class="stat-value">流浪者, 草药师学徒</span></div> </div> </div>
+                </div>
+                <div id="status-section">
+                     <div class="collapsible-header"> <h3 class="collapsible-title">状态效果</h3> <span class="collapsible-summary"></span> </div>
+                    <div id="status-content" class="pt-1"> <div class="flex flex-wrap gap-x-4 gap-y-1"> <div class="status-item tooltip" data-status-id="status_energetic"> <span class="status-text status-positive-alt"><i class="fas fa-leaf mr-1"></i>精力充沛 (临时)</span> <span class="tooltiptext">效果：行动效率略微提升。</span> </div> <div class="status-item tooltip" data-status-id="status_nimble"> <span class="status-text status-positive"><i class="fas fa-puzzle-piece mr-1"></i>心灵手巧 (永久)</span> <span class="tooltiptext">效果：进行精细操作时有优势。</span> </div> <div class="status-item tooltip" data-status-id="status_poisoned"> <span class="status-text status-negative"><i class="fas fa-skull-crossbones mr-1"></i>轻微中毒 (临时)</span> <span class="tooltiptext">效果：每回合损失少量生命值。</span> </div> </div> </div>
+                </div>
+                <div id="equipment-section">
+                     <div class="collapsible-header" onclick="toggleCollapse('equipment')"> <h3 class="collapsible-title">装备</h3> <span class="collapsible-summary"></span> <i class="fas fa-chevron-right collapsible-icon"></i> </div>
+                    <div class="collapsible-content expanded" id="equipment-content"> <div class="grid grid-cols-2 gap-2 pt-2"> <div class="equipment-item tooltip" data-equip-id="equip_sword_starter"> <div class="stat-item"> <span class="stat-label"><i class="fas fa-shield-alt w-4 text-center mr-1"></i>武器</span> <span class="stat-value">新手短剑</span> </div> <span class="tooltiptext">新手短剑<br>攻击力 +3</span> </div> <div class="equipment-item tooltip" data-equip-id="equip_armor_leather"> <div class="stat-item"> <span class="stat-label"><i class="fas fa-tshirt w-4 text-center mr-1"></i>护甲</span> <span class="stat-value">皮甲</span> </div> <span class="tooltiptext">皮甲<br>防御力 +5</span> </div> <div class="equipment-item tooltip" data-equip-id="equip_ring_lucky"> <div class="stat-item"> <span class="stat-label"><i class="fas fa-ring w-4 text-center mr-1"></i>饰品</span> <span class="stat-value">幸运指环</span> </div> <span class="tooltiptext">幸运指环<br>幸运 +1</span> </div> <div class="equipment-item tooltip" data-equip-id="empty_head"> <div class="stat-item text-gray-400"> <span class="stat-label"><i class="fas fa-hat-wizard w-4 text-center mr-1"></i>头部</span> <span class="stat-value">[空]</span> </div> <span class="tooltiptext">头部<br>无装备</span> </div> <div class="equipment-item tooltip" data-equip-id="empty_feet"> <div class="stat-item text-gray-400"> <span class="stat-label"><i class="fas fa-shoe-prints w-4 text-center mr-1"></i>脚部</span> <span class="stat-value">[空]</span> </div> <span class="tooltiptext">脚部<br>无装备</span> </div> </div> </div>
+                </div>
+                <div id="inventory-section">
+                    <div class="flex justify-between items-center mb-1"> <h3 class="collapsible-title">物品栏</h3> <span class="collapsible-summary" id="inventory-summary">0 / 0</span> </div>
+                    <div id="inventory-content"> <div id="inventory-list" class="grid grid-cols-5 gap-2 pt-2"> </div> </div>
+                </div>
+            </div>
+        </div>
+        <div class="module w-full lg:w-1/2">
+            <h2 class="module-title">事件信息</h2>
+            <div id="event-content" class="module-content space-y-4">
+                <p class="text-gray-500 italic">在这里显示当前发生的事件...</p>
+                <div id="event-description" class="prose prose-sm max-w-none text-gray-800"> <p>你小心翼翼地踏入森林，脚下的落叶发出沙沙的声响。阳光透过层层叠叠的树冠，在林间投下斑驳的光影。空气中弥漫着潮湿泥土和植物的气息。</p> <p>你注意到前方不远处似乎有一株闪烁着微光的奇特草药。</p> </div>
+                <div id="event-options" class="space-y-2"> <button class="btn btn-success w-full text-left justify-start" onclick="handleOptionClick('gather_herb')"> <i class="fas fa-hand-paper mr-2 w-4 text-center"></i> 尝试采集草药 </button> <button class="btn btn-primary w-full text-left justify-start" onclick="handleOptionClick('investigate')"> <i class="fas fa-search mr-2 w-4 text-center"></i> 仔细观察周围环境 </button> <button class="btn btn-danger w-full text-left justify-start" onclick="handleOptionClick('battle_slime')"> <i class="fas fa-sword mr-2 w-4 text-center"></i> [战斗] 攻击旁边的史莱姆! </button> <button class="btn btn-secondary w-full text-left justify-start" onclick="handleOptionClick('leave')"> <i class="fas fa-arrow-left mr-2 w-4 text-center"></i> 谨慎起见，后退离开 </button> </div>
+                <div id="event-result" class="mt-4 p-3 bg-blue-50 border-blue-200 text-blue-800 rounded-md text-sm" style="display: none;"> </div>
+            </div>
+        </div>
+        <div class="module w-full lg:w-1/4">
+            <h2 class="module-title">世界地图</h2>
+            <div class="module-content">
+                <div id="tile-info" class="mb-3 p-3 bg-gray-100 rounded border border-gray-200 text-sm"> <div><strong>当前位置:</strong> <span id="current-coords">(5, 5)</span></div> <div><strong>地形:</strong> <span id="current-terrain">茂密森林</span></div> <div><strong>天气:</strong> <span id="current-weather">晴朗</span></div> </div>
+                <div id="map-grid" class="grid grid-cols-10 gap-0.5 aspect-square"> </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModalOnClickOutside(event)">
+        </div>
+
+    <div id="admin-page-overlay" class="admin-page-overlay">
+        <div class="admin-page-header">
+            <h3 id="admin-page-title" class="admin-page-title">管理页面</h3>
+            <button id="admin-back-btn" class="btn admin-back-button btn-sm">
+                <i class="fas fa-arrow-left mr-1"></i>返回游戏
+            </button>
+        </div>
+        <div id="admin-page-content" class="admin-page-content">
+            <p class="text-gray-500 italic">正在加载管理页面...</p>
+        </div>
+    </div>
+
+    <script>
+        // --- 全局变量与状态 ---
+        const MAP_SIZE = 10;
+        let currentPlayerPos = { x: 5, y: 5 };
+        let currentModal = null;
+        let collapseState = {
+            attributes: true,
+            identity: true,
+            equipment: false,
+        };
+        let synthesisInventoryViewMode = 'icon';
+
+        // --- DOM 元素引用 ---
+        let hpBar, mpBar, mapGrid, tileInfoCoords, tileInfoTerrain, tileInfoWeather,
+            eventDescription, eventOptions, eventResult, modalOverlay, detailsBtn,
+            synthesisBtn, inventoryList, inventorySummary,
+            attributesSection, attributesContent, attributesSummary,
+            identitySection, identityContent, identitySummary,
+            statusSection, statusContent, equipmentSection, equipmentContent,
+            inventorySection, inventoryContent,
+            settingsBtn, settingsDropdownContent,
+            adminPageOverlay, adminPageTitle, adminPageContent, adminBackBtn; // 新增：管理员页面相关
+
+        // --- 伪数据 (保持不变) ---
+        // ... (mockMapData, mockCharacterData, mockSynthesisRecipes 保持不变) ...
+        const mockMapData = Array(MAP_SIZE).fill(0).map(() => Array(MAP_SIZE).fill({ terrain: '森林', weather: '晴朗', icon: 'fas fa-tree', color: 'text-green-700', bgColor: 'bg-green-100' }));
+        mockMapData[3][3] = { terrain: '河流', weather: '晴朗', icon: 'fas fa-water', color: 'text-blue-700', bgColor: 'bg-blue-100' };
+        mockMapData[7][6] = { terrain: '山地', weather: '多云', icon: 'fas fa-mountain', color: 'text-gray-700', bgColor: 'bg-gray-200' };
+        mockMapData[5][5].terrain = '茂密森林';
+        const mockCharacterData = { name: "艾瑞克", level: 5, race: "人类", class: "游侠", hp: 85, maxHp: 100, mp: 60, maxMp: 100, str: 12, dex: 10, con: 11, int: 15, wis: 13, cha: 9, faction: "中立善良", identity: ["流浪者", "草药师学徒"], status: [ { id: 'status_energetic', name: "精力充沛", type: "临时", desc: "行动效率略微提升。", icon: "fas fa-leaf", positive: true }, { id: 'status_nimble', name: "心灵手巧", type: "永久", desc: "进行精细操作时有优势。", icon: "fas fa-puzzle-piece", positive: true }, { id: 'status_poisoned', name: "轻微中毒", type: "临时", desc: "每回合损失少量生命值。", icon: "fas fa-skull-crossbones", positive: false } ], equipment: { weapon: { id: 'equip_sword_starter', name: "新手短剑", desc: "攻击力 +3", icon: "fas fa-shield-alt" }, armor: { id: 'equip_armor_leather', name: "皮甲", desc: "防御力 +5", icon: "fas fa-tshirt" }, accessory: { id: 'equip_ring_lucky', name: "幸运指环", desc: "幸运 +1", icon: "fas fa-ring" }, head: null, feet: null }, inventory: [ { id: 'item_apple', name: '苹果', desc: '普通的苹果，可以食用。', count: 3, icon: 'fas fa-apple-alt' }, { id: 'item_potion_heal_s', name: '治疗药水(小)', desc: '恢复少量生命值。', count: 1, icon: 'fas fa-flask' }, { id: 'item_scroll_mystic', name: '神秘卷轴', desc: '似乎记载着什么。', count: 1, icon: 'fas fa-scroll' }, { id: 'item_key_rusty', name: '生锈的钥匙', desc: '也许能打开什么锁。', count: 1, icon: 'fas fa-key' }, { id: 'item_bone_strange', name: '奇怪的骨头', desc: '不知是什么生物的。', count: 2, icon: 'fas fa-bone' } ], inventoryCapacity: 20 };
+        const mockSynthesisRecipes = [ { inputs: ['苹果', '苹果'], output: { name: '苹果酱', desc: '甜甜的苹果酱。', icon: 'fas fa-jar' }, probability: 80 }, { inputs: ['奇怪的骨头', '奇怪的骨头'], output: { name: '骨粉', desc: '磨碎的骨头粉末。', icon: 'fas fa-mortar-pestle' }, probability: 100 }, { inputs: ['治疗药水(小)', '草药'], output: { name: '治疗药水(中)', desc: '恢复中量生命值。', icon: 'fas fa-prescription-bottle-alt' }, probability: 70 }, { inputs: ['生锈的钥匙', '矿石'], output: { name: '普通的钥匙', desc: '一把普通的铜钥匙。', icon: 'fas fa-key' }, probability: 50 }, { inputs: ['奇怪的骨头', '草药'], output: { name: '奇怪的药膏', desc: '不知道有什么用。', icon: 'fas fa-bong' }, probability: 90 }, ];
+
+
+        // --- 地图功能 (保持不变) ---
+        // ... (renderMap, handleMapTileClick, updateTileInfo 保持不变) ...
+        function renderMap() { if (!mapGrid) return; mapGrid.innerHTML = ''; for (let y = 0; y < MAP_SIZE; y++) { for (let x = 0; x < MAP_SIZE; x++) { const tileData = mockMapData[y][x]; const tile = document.createElement('div'); tile.classList.add('map-tile', tileData.bgColor, tileData.color); tile.dataset.x = x; tile.dataset.y = y; tile.innerHTML = `<i class="${tileData.icon} tooltip"><span class="tooltiptext">${tileData.terrain} (${x}, ${y})</span></i>`; if (x === currentPlayerPos.x && y === currentPlayerPos.y) { tile.classList.add('player-location'); } tile.addEventListener('click', handleMapTileClick); mapGrid.appendChild(tile); } } updateTileInfo(currentPlayerPos.x, currentPlayerPos.y); }
+        function handleMapTileClick(event) { const tile = event.currentTarget; const x = parseInt(tile.dataset.x); const y = parseInt(tile.dataset.y); currentPlayerPos = { x, y }; renderMap(); triggerEvent(x, y); }
+        function updateTileInfo(x, y) { if (!tileInfoCoords || !tileInfoTerrain || !tileInfoWeather) return; const tileData = mockMapData[y][x]; tileInfoCoords.textContent = `(${x}, ${y})`; tileInfoTerrain.textContent = tileData.terrain; tileInfoWeather.textContent = tileData.weather; }
+
+
+        // --- 事件功能 (保持不变) ---
+        // ... (triggerEvent, handleOptionClick 保持不变) ...
+        function triggerEvent(x, y) { if (!eventDescription || !eventOptions || !eventResult) return; const tileData = mockMapData[y][x]; console.log(`触发事件于 (${x}, ${y}), 地形: ${tileData.terrain}`); eventResult.style.display = 'none'; eventResult.textContent = ''; let desc = ''; let optionsHtml = ''; switch (tileData.terrain) { case '森林': case '茂密森林': desc = `<p>你深入了这片${tileData.terrain}。四周树木高耸，光线昏暗。</p>`; if (Math.random() < 0.4) { desc += `<p>你发现地上散落着一些 ${Math.random() < 0.5 ? '干枯的树枝' : '不知名的浆果'}。</p>`; optionsHtml = ` <button class="btn btn-success w-full text-left justify-start" onclick="handleOptionClick('gather_wood')"><i class="fas fa-hand-paper mr-2 w-4 text-center"></i> 收集树枝</button> <button class="btn btn-success w-full text-left justify-start" onclick="handleOptionClick('gather_berry')"><i class="fas fa-hand-paper mr-2 w-4 text-center"></i> 采集浆果</button> <button class="btn btn-primary w-full text-left justify-start" onclick="handleOptionClick('investigate_forest')"><i class="fas fa-search mr-2 w-4 text-center"></i> 搜索周围</button> <button class="btn btn-secondary w-full text-left justify-start" onclick="handleOptionClick('wait')"><i class="fas fa-clock mr-2 w-4 text-center"></i> 原地等待</button> `; } else if (Math.random() < 0.7) { desc += `<p>一只 ${Math.random() < 0.5 ? '野兔' : '松鼠'} 快速跑过，消失在灌木丛中。</p>`; optionsHtml = ` <button class="btn btn-primary w-full text-left justify-start" onclick="handleOptionClick('investigate_forest')"><i class="fas fa-search mr-2 w-4 text-center"></i> 搜索周围</button> <button class="btn btn-secondary w-full text-left justify-start" onclick="handleOptionClick('wait')"><i class="fas fa-clock mr-2 w-4 text-center"></i> 原地等待</button> `; } else { desc += `<p>你听到远处传来奇怪的声响，似乎有什么东西在靠近！</p>`; optionsHtml = ` <button class="btn btn-warning w-full text-left justify-start" onclick="handleOptionClick('prepare_defense')"><i class="fas fa-shield-alt mr-2 w-4 text-center"></i> 准备防御</button> <button class="btn btn-danger w-full text-left justify-start" onclick="handleOptionClick('battle_goblin')"><i class="fas fa-sword mr-2 w-4 text-center"></i> [战斗] 主动出击！</button> <button class="btn btn-secondary w-full text-left justify-start" onclick="handleOptionClick('hide')"><i class="fas fa-eye-slash mr-2 w-4 text-center"></i> 尝试躲藏</button> `; } break; case '河流': desc = `<p>你来到一条${tileData.weather === '多云' ? '浑浊的' : '清澈的'}河流边。河水潺潺流淌。</p>`; optionsHtml = ` <button class="btn btn-success w-full text-left justify-start" onclick="handleOptionClick('drink_water')"><i class="fas fa-tint mr-2 w-4 text-center"></i> 喝水</button> <button class="btn btn-primary w-full text-left justify-start" onclick="handleOptionClick('search_riverbank')"><i class="fas fa-search mr-2 w-4 text-center"></i> 搜索河岸</button> <button class="btn btn-info w-full text-left justify-start" onclick="handleOptionClick('try_fishing')"><i class="fas fa-fish mr-2 w-4 text-center"></i> 尝试钓鱼</button> <button class="btn btn-secondary w-full text-left justify-start" onclick="handleOptionClick('wait')"><i class="fas fa-clock mr-2 w-4 text-center"></i> 在河边休息</button> `; break; case '山地': desc = `<p>你爬上了一片崎岖的山地。山风${tileData.weather === '多云' ? '呼啸' : '微拂'}，视野开阔。</p>`; if (Math.random() < 0.5) { desc += `<p>你在岩石缝隙中发现了一些 ${Math.random() < 0.6 ? '闪亮的矿石' : '奇特的苔藓'}。</p>`; optionsHtml = ` <button class="btn btn-success w-full text-left justify-start" onclick="handleOptionClick('gather_ore')"><i class="fas fa-gem mr-2 w-4 text-center"></i> 开采矿石</button> <button class="btn btn-success w-full text-left justify-start" onclick="handleOptionClick('gather_moss')"><i class="fas fa-seedling mr-2 w-4 text-center"></i> 采集苔藓</button> <button class="btn btn-primary w-full text-left justify-start" onclick="handleOptionClick('scout_mountain')"><i class="fas fa-binoculars mr-2 w-4 text-center"></i> 侦察远处</button> <button class="btn btn-secondary w-full text-left justify-start" onclick="handleOptionClick('wait')"><i class="fas fa-clock mr-2 w-4 text-center"></i> 休息片刻</button> `; } else { desc += `<p>你发现了一个隐蔽的山洞入口。</p>`; optionsHtml = ` <button class="btn btn-warning w-full text-left justify-start" onclick="handleOptionClick('enter_cave')"><i class="fas fa-dungeon mr-2 w-4 text-center"></i> 进入山洞</button> <button class="btn btn-primary w-full text-left justify-start" onclick="handleOptionClick('scout_mountain')"><i class="fas fa-binoculars mr-2 w-4 text-center"></i> 侦察远处</button> <button class="btn btn-secondary w-full text-left justify-start" onclick="handleOptionClick('ignore_cave')"><i class="fas fa-times mr-2 w-4 text-center"></i> 忽略山洞</button> `; } break; default: desc = `<p>你来到了 (${x}, ${y})。</p>`; optionsHtml = `<button class="btn btn-secondary w-full text-left justify-start" onclick="handleOptionClick('wait')"><i class="fas fa-clock mr-2 w-4 text-center"></i> 原地等待</button>`; } eventDescription.innerHTML = desc; eventOptions.innerHTML = optionsHtml; }
+        function handleOptionClick(optionId) { if (!eventResult) return; console.log(`选择了选项: ${optionId}`); let resultText = ''; let resultClass = 'bg-blue-50 border-blue-200 text-blue-800'; if (optionId.startsWith('battle_')) { const enemyType = optionId.split('_')[1]; openModal('battle', { enemyType: enemyType }); return; } switch (optionId) { case 'gather_herb': resultText = '你成功采集到了一些[普通草药] x1。'; const herb = mockCharacterData.inventory.find(i => i.id === 'item_herb_common'); if (herb) { herb.count += 1; } else { mockCharacterData.inventory.push({ id: 'item_herb_common', name: '草药', desc: '常见的草药。', count: 1, icon: 'fas fa-leaf' }); } updateInventoryUI(); resultClass = 'bg-green-50 border-green-200 text-green-800'; break; case 'gather_wood': resultText = '你收集了一些[干枯的树枝] x2。'; const wood = mockCharacterData.inventory.find(i => i.id === 'item_wood_branch'); if (wood) { wood.count += 2; } else { mockCharacterData.inventory.push({ id: 'item_wood_branch', name: '树枝', desc: '干枯的树枝。', count: 2, icon: 'fas fa-tree' }); } updateInventoryUI(); resultClass = 'bg-green-50 border-green-200 text-green-800'; break; case 'gather_berry': const isGoodBerry = Math.random() < 0.7; resultText = isGoodBerry ? '你采集了一些[红色浆果] x3。看起来可以吃。' : '你采集了一些[紫色浆果] x2。最好不要乱吃。'; const berryId = isGoodBerry ? 'item_berry_red' : 'item_berry_purple'; const berryName = isGoodBerry ? '红色浆果' : '紫色浆果'; const berryDesc = isGoodBerry ? '可以吃的浆果。' : '最好不要乱吃。'; const berryCount = isGoodBerry ? 3 : 2; const berry = mockCharacterData.inventory.find(i => i.id === berryId); if (berry) { berry.count += berryCount; } else { mockCharacterData.inventory.push({ id: berryId, name: berryName, desc: berryDesc, count: berryCount, icon: 'fas fa-apple-alt' }); } updateInventoryUI(); resultClass = 'bg-green-50 border-green-200 text-green-800'; break; case 'gather_ore': resultText = '你努力敲下了一些[铜矿石] x1。'; const ore = mockCharacterData.inventory.find(i => i.id === 'item_ore_copper'); if (ore) { ore.count += 1; } else { mockCharacterData.inventory.push({ id: 'item_ore_copper', name: '铜矿石', desc: '基础的矿石。', count: 1, icon: 'fas fa-gem' }); } updateInventoryUI(); resultClass = 'bg-green-50 border-green-200 text-green-800'; break; case 'gather_moss': resultText = '你收集了一些[发光的苔藓] x1。'; const moss = mockCharacterData.inventory.find(i => i.id === 'item_moss_glowing'); if (moss) { moss.count += 1; } else { mockCharacterData.inventory.push({ id: 'item_moss_glowing', name: '发光苔藓', desc: '发出微弱的光芒。', count: 1, icon: 'fas fa-seedling' }); } updateInventoryUI(); resultClass = 'bg-green-50 border-green-200 text-green-800'; break; case 'investigate': case 'investigate_forest': case 'search_riverbank': case 'scout_mountain': resultText = '你仔细观察了四周，暂时没有发现什么特别的东西。'; resultClass = 'bg-yellow-50 border-yellow-200 text-yellow-800'; break; case 'prepare_defense': resultText = '你提高了警惕，做好了防御准备。'; resultClass = 'bg-yellow-50 border-yellow-200 text-yellow-800'; break; case 'hide': const hideSuccess = Math.random() < 0.6; resultText = hideSuccess ? '你成功地躲藏了起来，没有被发现。' : '你的躲藏不太成功，似乎被什么东西注意到了！'; resultClass = hideSuccess ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'; break; case 'drink_water': resultText = '清凉的河水让你精神一振。'; resultClass = 'bg-green-50 border-green-200 text-green-800'; break; case 'try_fishing': const fishSuccess = Math.random() < 0.3; resultText = fishSuccess ? '你钓到了一条[小鱼] x1！' : '等了半天，什么也没钓到。'; if (fishSuccess) { const fish = mockCharacterData.inventory.find(i => i.id === 'item_fish_small'); if (fish) { fish.count += 1; } else { mockCharacterData.inventory.push({ id: 'item_fish_small', name: '小鱼', desc: '可以烤着吃。', count: 1, icon: 'fas fa-fish' }); } updateInventoryUI(); } resultClass = fishSuccess ? 'bg-green-50 border-green-200 text-green-800' : 'bg-yellow-50 border-yellow-200 text-yellow-800'; break; case 'enter_cave': resultText = '你走进了黑暗的山洞...（后续事件待开发）'; resultClass = 'bg-purple-50 border-purple-200 text-purple-800'; break; case 'ignore_cave': resultText = '你决定不进入山洞，继续在山地探索。'; break; case 'leave': case 'wait': default: resultText = '你决定暂时不做任何行动。'; break; } eventResult.textContent = resultText; eventResult.className = `mt-4 p-3 rounded-md text-sm ${resultClass}`; eventResult.style.display = 'block'; }
+
+
+        // --- 弹窗功能 (部分修改) ---
+        /**
+         * @description 打开指定类型的弹窗
+         * @function openModal
+         * @param {'details' | 'enemy_details' | 'synthesis' | 'battle' | 'admin'} type - 弹窗类型 (新增 'admin')
+         * @param {object} [data={}] - 传递给弹窗的数据
+         * @returns {void} - 无返回值
+         */
+        function openModal(type, data = {}) {
+            currentModal = type;
+            let modalContentHtml = '';
+            let modalSizeClass = '';
+
+            switch (type) {
+                case 'details':
+                    modalContentHtml = generateDetailsModal(mockCharacterData, "人物详情");
+                    modalSizeClass = 'modal-details';
+                    break;
+                case 'enemy_details':
+                    modalContentHtml = generateDetailsModal(data.enemyData, `敌人详情 - ${data.enemyData.name}`);
+                    modalSizeClass = 'modal-details';
+                    break;
+                case 'synthesis':
+                    modalContentHtml = generateSynthesisModal();
+                    modalSizeClass = 'modal-synthesis';
+                    break;
+                case 'battle':
+                    modalContentHtml = generateBattleModal(data.enemyType || '未知敌人');
+                    modalSizeClass = 'modal-battle';
+                    break;
+                // 新增：管理员模式弹窗
+                case 'admin':
+                    modalContentHtml = generateAdminModal();
+                    modalSizeClass = 'modal-admin';
+                    break;
+                default: console.error('未知的弹窗类型:', type); return;
+            }
+
+            modalOverlay.innerHTML = `<div class="modal-container ${modalSizeClass}">${modalContentHtml}</div>`;
+            modalOverlay.classList.add('active');
+
+            if (type === 'synthesis') { initializeSynthesisModal(); }
+            if (type === 'battle') { initializeBattleModal(); }
+            // 新增：管理员弹窗的初始化（如果需要）
+            if (type === 'admin') { initializeAdminModal(); }
+        }
+        /**
+         * @description 关闭当前打开的弹窗
+         * @function closeModal
+         * @returns {void} - 无返回值
+         */
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+            currentModal = null;
+            setTimeout(() => { modalOverlay.innerHTML = ''; }, 300);
+        }
+        /**
+         * @description 处理点击弹窗外部区域关闭弹窗的逻辑 (战斗和管理员页面除外)
+         * @function closeModalOnClickOutside
+         * @param {MouseEvent} event - 点击事件对象
+         * @returns {void} - 无返回值
+         */
+        function closeModalOnClickOutside(event) {
+            // 修改：管理员弹窗和战斗弹窗点击外部不关闭
+            if (event.target === modalOverlay && currentModal !== 'battle' && currentModal !== 'admin') {
+                closeModal();
+            }
+        }
+        /**
+         * @description 生成实体详情弹窗 HTML (保持不变)
+         * @function generateDetailsModal
+         * @param {object} entityData - 实体数据
+         * @param {string} title - 弹窗标题
+         * @returns {string} - HTML 字符串
+         */
+        function generateDetailsModal(entityData, title) { if (!entityData) return '<p>错误：无法加载详情数据。</p>'; const statusHtml = (entityData.status || []).map(s => `<li class="text-sm ${s.positive === false ? 'text-red-600' : 'text-green-600'}"><i class="${s.icon} mr-1"></i>${s.name} (${s.type}): ${s.desc}</li>`).join(''); const equipmentHtml = Object.entries(entityData.equipment || {}).map(([slot, item]) => `<li class="text-sm">${slot}: ${item ? `${item.name} (${item.desc})` : '[空]'}</li>`).join(''); return ` <button class="modal-close-btn" onclick="closeModal()">&times;</button> <h3 class="modal-title">${title}</h3> <div class="space-y-3 text-sm text-gray-800"> ${entityData.level ? `<p><strong>等级:</strong> ${entityData.level}</p>` : ''} ${entityData.race ? `<p><strong>种族:</strong> ${entityData.race}</p>` : ''} ${entityData.class ? `<p><strong>职业:</strong> ${entityData.class}</p>` : ''} <div class="pt-2 border-t"> <h4 class="font-semibold mb-1">属性:</h4> <p>力量: ${entityData.str || 'N/A'}, 敏捷: ${entityData.dex || 'N/A'}, 体质: ${entityData.con || 'N/A'}</p> <p>智力: ${entityData.int || 'N/A'}, 感知: ${entityData.wis || 'N/A'}, 魅力: ${entityData.cha || 'N/A'}</p> </div> ${statusHtml ? `<div class="pt-2 border-t"><h4 class="font-semibold mb-1">状态:</h4><ul>${statusHtml}</ul></div>` : ''} ${equipmentHtml ? `<div class="pt-2 border-t"><h4 class="font-semibold mb-1">装备:</h4><ul>${equipmentHtml}</ul></div>` : ''} ${entityData.backgroundStory ? `<div class="pt-2 border-t"><h4 class="font-semibold mb-1">背景故事:</h4><p class="italic text-gray-600">${entityData.backgroundStory}</p></div>` : ''} ${entityData.description ? `<div class="pt-2 border-t"><h4 class="font-semibold mb-1">描述:</h4><p class="italic text-gray-600">${entityData.description}</p></div>` : ''} </div> <div class="mt-6 text-right"> <button class="btn btn-secondary" onclick="closeModal()">关闭</button> </div>`; }
+        /**
+         * @description 生成合成弹窗 HTML (保持不变)
+         * @function generateSynthesisModal
+         * @returns {string} - HTML 字符串
+         */
+        function generateSynthesisModal() { const inventoryHtml = mockCharacterData.inventory.map(item => ` <div class="item-display tooltip" draggable="true" data-item-id="${item.id}" data-item-name="${item.name}"> <div class="item-icon synthesis-item-icon"> <i class="${item.icon}"></i> ${item.count > 1 ? `<span class="item-count">${item.count}</span>` : ''} </div> <span class="item-name">${item.name}</span> <span class="tooltiptext">${item.name}<br>${item.desc}</span> </div> `).join(''); return ` <button class="modal-close-btn" onclick="closeModal()">&times;</button> <div class="synthesis-modal-layout"> <div class="synthesis-column"> <div class="flex justify-between items-center mb-3"> <h4 class="text-lg font-semibold text-gray-700">库存物品</h4> <button id="toggle-synthesis-view-btn" class="btn btn-outline-gray btn-sm"> <i class="fas fa-list mr-1"></i>列表视图 </button> </div> <div id="synthesis-inventory-list-container"> <div id="synthesis-inventory-list" class="icon-view"> ${inventoryHtml} </div> </div> </div> <div class="synthesis-column flex-shrink-0 w-full md:w-1/3"> <h4 class="text-lg font-semibold mb-3 text-gray-700">合成区域</h4> <p class="text-xs text-gray-500 mb-2">从左侧拖拽物品到这里，点击移除。</p> <div id="synthesis-drop-area" class="synthesis-area flex-grow"></div> <div id="synthesis-result-text" class="text-center text-sm font-medium text-gray-700 h-6 my-2"></div> <button id="synthesis-execute-btn" class="btn btn-warning w-full mt-auto"> <i class="fas fa-magic mr-2"></i>执行合成 </button> </div> <div class="synthesis-column"> <h4 class="text-lg font-semibold mb-3 text-gray-700">相关配方</h4> <div id="synthesis-formula-list" class="formula-list space-y-1"> <p class="text-gray-500 text-sm italic">放入物品以查看相关配方...</p> </div> </div> </div> `; }
+        /**
+         * @description 初始化合成弹窗逻辑 (保持不变)
+         * @function initializeSynthesisModal
+         * @returns {void} - 无返回值
+         */
+        function initializeSynthesisModal() { const inventoryListContainer = document.getElementById('synthesis-inventory-list'); const toggleViewBtn = document.getElementById('toggle-synthesis-view-btn'); const dropArea = document.getElementById('synthesis-drop-area'); const formulaList = document.getElementById('synthesis-formula-list'); const resultText = document.getElementById('synthesis-result-text'); const executeBtn = document.getElementById('synthesis-execute-btn'); renderSynthesisInventory(synthesisInventoryViewMode); toggleViewBtn.addEventListener('click', () => { synthesisInventoryViewMode = synthesisInventoryViewMode === 'icon' ? 'list' : 'icon'; renderSynthesisInventory(synthesisInventoryViewMode); toggleViewBtn.innerHTML = synthesisInventoryViewMode === 'icon' ? '<i class="fas fa-list mr-1"></i>列表视图' : '<i class="fas fa-th-large mr-1"></i>图标视图'; }); dropArea.addEventListener('dragover', (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; dropArea.classList.add('bg-blue-50', 'border-blue-300'); }); dropArea.addEventListener('dragleave', () => { dropArea.classList.remove('bg-blue-50', 'border-blue-300'); }); dropArea.addEventListener('drop', (event) => { event.preventDefault(); dropArea.classList.remove('bg-blue-50', 'border-blue-300'); try { const itemData = JSON.parse(event.dataTransfer.getData('text/plain')); const inventoryItem = mockCharacterData.inventory.find(invItem => invItem.id === itemData.id); const countInArea = Array.from(dropArea.querySelectorAll('.item-display')).filter(el => el.dataset.itemId === itemData.id).length; if (inventoryItem && inventoryItem.count > countInArea) { const newItemElement = document.createElement('div'); newItemElement.classList.add('item-display', 'tooltip'); newItemElement.dataset.itemId = itemData.id; newItemElement.dataset.itemName = itemData.name; newItemElement.innerHTML = ` <div class="item-icon synthesis-item-icon"><i class="${itemData.icon}"></i></div> <span class="item-name">${itemData.name}</span> <span class="tooltiptext">${itemData.name}</span>`; newItemElement.addEventListener('click', () => { newItemElement.remove(); updateSynthesisFormulas(); }); dropArea.appendChild(newItemElement); updateSynthesisFormulas(); } else { showSynthesisResult('库存不足!', 'text-red-500'); } } catch (e) { console.error("拖放数据解析失败:", e); } }); executeBtn.addEventListener('click', () => { const itemsInArea = Array.from(dropArea.querySelectorAll('.item-display')); if (itemsInArea.length < 1) { showSynthesisResult('请放入物品!', 'text-yellow-600'); return; } const itemNamesInArea = itemsInArea.map(item => item.dataset.itemName).sort(); const matchedRecipe = mockSynthesisRecipes.find(recipe => { const sortedInputs = [...recipe.inputs].sort(); return JSON.stringify(sortedInputs) === JSON.stringify(itemNamesInArea); }); if (matchedRecipe) { let canCraft = true; const requiredCounts = {}; matchedRecipe.inputs.forEach(name => { requiredCounts[name] = (requiredCounts[name] || 0) + 1; }); for(const name in requiredCounts) { const invItem = mockCharacterData.inventory.find(i => i.name === name); if (!invItem || invItem.count < requiredCounts[name]) { canCraft = false; showSynthesisResult(`库存不足: ${name}`, 'text-red-500'); break; } } if (canCraft) { if (Math.random() * 100 < matchedRecipe.probability) { showSynthesisResult(`合成成功! 获得: ${matchedRecipe.output.name}`, 'text-green-600'); matchedRecipe.inputs.forEach(name => { const invItem = mockCharacterData.inventory.find(i => i.name === name); if (invItem) invItem.count -= 1; }); mockCharacterData.inventory = mockCharacterData.inventory.filter(i => i.count > 0); const outputItem = mockCharacterData.inventory.find(i => i.name === matchedRecipe.output.name); if (outputItem) { outputItem.count += 1; } else { mockCharacterData.inventory.push({ id: `item_${matchedRecipe.output.name.toLowerCase().replace(/\s+/g, '_')}`, name: matchedRecipe.output.name, desc: matchedRecipe.output.desc, count: 1, icon: matchedRecipe.output.icon }); } updateInventoryUI(); renderSynthesisInventory(synthesisInventoryViewMode); dropArea.innerHTML = ''; updateSynthesisFormulas(); } else { showSynthesisResult(`合成失败! (概率: ${matchedRecipe.probability}%)`, 'text-red-500'); } } } else { showSynthesisResult('没有找到匹配的配方...', 'text-gray-500'); } }); updateSynthesisFormulas(); }
+        /**
+         * @description 渲染合成弹窗库存列表 (保持不变)
+         * @function renderSynthesisInventory
+         * @param {'icon' | 'list'} mode - 视图模式
+         * @returns {void} - 无返回值
+         */
+        function renderSynthesisInventory(mode) { const inventoryListEl = document.getElementById('synthesis-inventory-list'); if (!inventoryListEl) return; inventoryListEl.innerHTML = ''; inventoryListEl.className = mode === 'icon' ? 'icon-view' : 'list-view'; mockCharacterData.inventory.forEach(item => { const itemWrapper = document.createElement('div'); itemWrapper.classList.add('item-display', 'tooltip'); itemWrapper.draggable = true; itemWrapper.dataset.itemId = item.id; itemWrapper.dataset.itemName = item.name; const itemIconHtml = ` <div class="item-icon ${mode === 'icon' ? 'synthesis-item-icon' : ''}"> <i class="${item.icon || 'fas fa-box'}"></i> ${item.count > 1 && mode === 'icon' ? `<span class="item-count">${item.count}</span>` : ''} </div> `; const itemNameHtml = `<span class="item-name">${item.name}</span>`; const itemCountListHtml = mode === 'list' ? `<span class="item-count">(x${item.count})</span>` : ''; const tooltipHtml = `<span class="tooltiptext">${item.name}<br>${item.desc}</span>`; if (mode === 'icon') { itemWrapper.innerHTML = itemIconHtml + itemNameHtml + tooltipHtml; } else { itemWrapper.innerHTML = itemIconHtml + itemNameHtml + itemCountListHtml + tooltipHtml; } itemWrapper.addEventListener('dragstart', (event) => { const iconElement = itemWrapper.querySelector('.item-icon i'); if (!iconElement) return; event.dataTransfer.setData('text/plain', JSON.stringify({ id: item.id, name: item.name, icon: iconElement.className })); event.dataTransfer.effectAllowed = 'copy'; itemWrapper.classList.add('opacity-50'); }); itemWrapper.addEventListener('dragend', (event) => { itemWrapper.classList.remove('opacity-50'); }); inventoryListEl.appendChild(itemWrapper); }); }
+        /**
+         * @description 更新合成弹窗相关配方 (保持不变)
+         * @function updateSynthesisFormulas
+         * @returns {void} - 无返回值
+         */
+        function updateSynthesisFormulas() { const formulaList = document.getElementById('synthesis-formula-list'); const itemsInArea = Array.from(document.querySelectorAll('#synthesis-drop-area .item-display')); const itemNamesInArea = itemsInArea.map(item => item.dataset.itemName); formulaList.innerHTML = ''; if (itemNamesInArea.length === 0) { formulaList.innerHTML = '<p class="text-gray-500 text-sm italic">放入物品以查看相关配方...</p>'; return; } const relevantRecipes = mockSynthesisRecipes.filter(recipe => itemNamesInArea.every(itemNameInArea => recipe.inputs.includes(itemNameInArea)) ); if (relevantRecipes.length > 0) { relevantRecipes.forEach(recipe => { const formulaEl = document.createElement('div'); formulaEl.classList.add('formula-item'); formulaEl.innerHTML = ` <span>${recipe.inputs.join(' + ')}</span> <span class="mx-1">→</span> <span>${recipe.output.name} (${recipe.probability}%)</span>`; formulaList.appendChild(formulaEl); }); } else { formulaList.innerHTML = '<p class="text-gray-500 text-sm italic">没有找到相关的配方。</p>'; } }
+        /**
+         * @description 显示合成结果信息 (保持不变)
+         * @function showSynthesisResult
+         * @param {string} text - 文本
+         * @param {string} colorClass - 颜色类
+         * @returns {void} - 无返回值
+         */
+        function showSynthesisResult(text, colorClass) { const resultText = document.getElementById('synthesis-result-text'); if (resultText) { resultText.textContent = text; resultText.className = `text-center text-sm font-medium h-6 my-2 ${colorClass}`; setTimeout(() => { if (resultText) resultText.textContent = ''; }, 3000); } }
+        /**
+         * @description 生成战斗弹窗 HTML (保持不变)
+         * @function generateBattleModal
+         * @param {string} enemyType - 敌人类型
+         * @returns {string} - HTML 字符串
+         */
+        function generateBattleModal(enemyType) { const player = mockCharacterData; const enemy = { name: enemyType === 'slime' ? '史莱姆' : (enemyType === 'goblin' ? '哥布林' : '未知敌人'), icon: enemyType === 'slime' ? 'fas fa-tint' : (enemyType === 'goblin' ? 'fas fa-hat-wizard' : 'fas fa-question'), hp: enemyType === 'slime' ? 30 : (enemyType === 'goblin' ? 50 : 40), maxHp: enemyType === 'slime' ? 30 : (enemyType === 'goblin' ? 50 : 40), color: enemyType === 'slime' ? 'text-green-700 bg-green-200' : (enemyType === 'goblin' ? 'text-yellow-800 bg-yellow-200' : 'text-gray-700 bg-gray-200'), level: enemyType === 'slime' ? 1 : (enemyType === 'goblin' ? 3 : 2), str: enemyType === 'slime' ? 5 : (enemyType === 'goblin' ? 8 : 6), dex: enemyType === 'slime' ? 8 : (enemyType === 'goblin' ? 10 : 7), con: enemyType === 'slime' ? 10 : (enemyType === 'goblin' ? 9 : 8), description: enemyType === 'slime' ? '一团黏糊糊的生物。' : (enemyType === 'goblin' ? '狡猾的小型类人生物。' : '神秘的对手。') }; window.currentEnemyData = enemy; return ` <div class="battle-modal-layout"> <div class="battle-left-column"> <div class="battle-area"> <h4 class="text-lg font-semibold mb-3 text-center text-red-600">敌人</h4> <div class="battle-unit"> <div class="battle-unit-avatar ${enemy.color}" onclick="openModal('enemy_details', { enemyData: window.currentEnemyData })" title="点击查看详情"> <i class="${enemy.icon}"></i> </div> <div class="battle-unit-info"> <div class="font-semibold text-md">${enemy.name}</div> <div class="text-xs text-gray-600">生命值:</div> <div class="progress-bar-container mt-1"> <div id="enemy-hp-bar" class="progress-bar progress-bar-hp" style="width: ${Math.round(enemy.hp / enemy.maxHp * 100)}%;">${enemy.hp}/${enemy.maxHp}</div> </div> </div> </div> </div> <div class="battle-area"> <h4 class="text-lg font-semibold mb-3 text-center text-blue-600">玩家</h4> <div class="battle-unit"> <div class="battle-unit-avatar bg-blue-200 text-blue-700"> <i class="fas fa-user"></i> </div> <div class="battle-unit-info"> <div class="font-semibold text-md">${player.name}</div> <div class="text-xs text-gray-600">生命值:</div> <div class="progress-bar-container mt-1"> <div id="player-battle-hp-bar" class="progress-bar progress-bar-hp" style="width: ${Math.round(player.hp / player.maxHp * 100)}%;">${player.hp}/${player.maxHp}</div> </div> <div class="text-xs text-gray-600 mt-1">法力值:</div> <div class="progress-bar-container mt-1"> <div id="player-battle-mp-bar" class="progress-bar progress-bar-mp" style="width: ${Math.round(player.mp / player.maxMp * 100)}%;">${player.mp}/${player.maxMp}</div> </div> </div> </div> </div> </div> <div class="battle-right-column"> <h4 class="text-lg font-semibold mb-2 text-gray-700">战斗记录</h4> <div id="battle-log" class="battle-log"> <p class="log-system">战斗开始！</p> <p class="log-enemy">${enemy.name} 发起了攻击！</p> <p class="log-player">你受到了 5 点伤害。</p> </div> <div class="battle-skills"> <button class="btn btn-danger" onclick="battleAction('attack')"><i class="fas fa-sword mr-1"></i> 攻击</button> <button class="btn btn-primary" onclick="battleAction('skill_fireball')"><i class="fas fa-magic mr-1"></i> 火球术 (5MP)</button> <button class="btn btn-blue" onclick="battleAction('defend')"><i class="fas fa-shield-alt mr-1"></i> 防御</button> <button class="btn btn-success" onclick="battleAction('item_potion')"><i class="fas fa-flask mr-1"></i> 治疗药水</button> <button class="btn btn-secondary" onclick="battleAction('flee')"><i class="fas fa-running mr-1"></i> 逃跑</button> </div> </div> </div>`; }
+        /**
+         * @description 初始化战斗弹窗 (保持不变)
+         * @function initializeBattleModal
+         * @returns {void} - 无返回值
+         */
+        function initializeBattleModal() { console.log("战斗弹窗已初始化"); const battleLog = document.getElementById('battle-log'); if (battleLog) { battleLog.scrollTop = battleLog.scrollHeight; } }
+        /**
+         * @description 处理战斗行动 (保持不变)
+         * @function battleAction
+         * @param {string} actionId - 行动 ID
+         * @returns {void} - 无返回值
+         */
+        function battleAction(actionId) { const battleLog = document.getElementById('battle-log'); if (!battleLog || !window.currentEnemyData) return; let playerActionText = '', enemyActionText = '', systemText = ''; switch(actionId) { case 'attack': playerActionText = `你对 ${window.currentEnemyData.name} 发动了攻击！`; const playerDamage = Math.floor(Math.random() * 5) + 3; enemyActionText = `${window.currentEnemyData.name} 受到了 ${playerDamage} 点伤害。`; window.currentEnemyData.hp = Math.max(0, window.currentEnemyData.hp - playerDamage); const enemyHpBar = document.getElementById('enemy-hp-bar'); if (enemyHpBar) { const percent = Math.round(window.currentEnemyData.hp / window.currentEnemyData.maxHp * 100); enemyHpBar.style.width = `${percent}%`; enemyHpBar.textContent = `${window.currentEnemyData.hp}/${window.currentEnemyData.maxHp}`; if (window.currentEnemyData.hp === 0) { systemText = `${window.currentEnemyData.name} 被击败了！战斗结束。`; document.querySelectorAll('.battle-skills button').forEach(btn => btn.disabled = true); setTimeout(closeModal, 2000); } } break; case 'skill_fireball': playerActionText = `你咏唱咒语，释放了火球术！`; const manaCost = 5; if (mockCharacterData.mp >= manaCost) { mockCharacterData.mp -= manaCost; const skillDamage = Math.floor(Math.random() * 8) + 5; enemyActionText = `火球击中了 ${window.currentEnemyData.name}，造成 ${skillDamage} 点伤害！`; const playerMpBar = document.getElementById('player-battle-mp-bar'); if(playerMpBar) { const mpPercent = Math.round(mockCharacterData.mp / mockCharacterData.maxMp * 100); playerMpBar.style.width = `${mpPercent}%`; playerMpBar.textContent = `${mockCharacterData.mp}/${mockCharacterData.maxMp}`; } window.currentEnemyData.hp = Math.max(0, window.currentEnemyData.hp - skillDamage); const enemyHpBarSkill = document.getElementById('enemy-hp-bar'); if (enemyHpBarSkill) { const percent = Math.round(window.currentEnemyData.hp / window.currentEnemyData.maxHp * 100); enemyHpBarSkill.style.width = `${percent}%`; enemyHpBarSkill.textContent = `${window.currentEnemyData.hp}/${window.currentEnemyData.maxHp}`; if (window.currentEnemyData.hp === 0) { systemText = `${window.currentEnemyData.name} 被击败了！战斗结束。`; document.querySelectorAll('.battle-skills button').forEach(btn => btn.disabled = true); setTimeout(closeModal, 2000); } } } else { enemyActionText = `法力不足，施法失败！`; } break; case 'defend': playerActionText = `你采取了防御姿态。`; break; case 'item_potion': const potion = mockCharacterData.inventory.find(i => i.id === 'item_potion_heal_s'); if (potion && potion.count > 0) { playerActionText = `你使用了[治疗药水(小)]。`; const healAmount = Math.floor(Math.random() * 10) + 10; mockCharacterData.hp = Math.min(mockCharacterData.maxHp, mockCharacterData.hp + healAmount); potion.count -= 1; if (potion.count === 0) { mockCharacterData.inventory = mockCharacterData.inventory.filter(i => i.id !== 'item_potion_heal_s'); } enemyActionText = `你恢复了 ${healAmount} 点生命值。`; updateInventoryUI(); const playerHpBar = document.getElementById('player-battle-hp-bar'); if(playerHpBar) { const hpPercent = Math.round(mockCharacterData.hp / mockCharacterData.maxHp * 100); playerHpBar.style.width = `${hpPercent}%`; playerHpBar.textContent = `${mockCharacterData.hp}/${mockCharacterData.maxHp}`; } } else { playerActionText = `你试图使用药水，但发现背包里没有了！`; } break; case 'flee': playerActionText = `你尝试逃跑...`; if (Math.random() < 0.7) { systemText = '逃跑成功！战斗结束。'; document.querySelectorAll('.battle-skills button').forEach(btn => btn.disabled = true); setTimeout(closeModal, 1500); } else { enemyActionText = '逃跑失败！'; } break; } if (playerActionText) { const p = document.createElement('p'); p.classList.add('log-player'); p.textContent = playerActionText; battleLog.appendChild(p); } if (enemyActionText) { const p = document.createElement('p'); p.classList.add('log-enemy'); p.textContent = enemyActionText; battleLog.appendChild(p); } if (systemText) { const p = document.createElement('p'); p.classList.add('log-system'); p.textContent = systemText; battleLog.appendChild(p); } battleLog.scrollTop = battleLog.scrollHeight; updateCharacterUI(); }
+
+        // --- 折叠功能 (保持不变) ---
+        // ... (toggleCollapse 保持不变) ...
+        function toggleCollapse(sectionId) { if (sectionId === 'status' || sectionId === 'inventory') return; const content = document.getElementById(`${sectionId}-content`); const header = content?.previousElementSibling; const icon = header?.querySelector('.collapsible-icon'); if (content && header && icon) { collapseState[sectionId] = !collapseState[sectionId]; if (collapseState[sectionId]) { content.classList.remove('expanded'); header.classList.remove('expanded'); } else { content.classList.add('expanded'); header.classList.add('expanded'); } } else { console.warn(`无法找到区域 ${sectionId} 的 content, header 或 icon 元素。`); } }
+
+        // --- UI 更新 (部分修改) ---
+        /**
+         * @description 更新角色状态面板 (保持不变)
+         * @function updateCharacterUI
+         * @returns {void} - 无返回值
+         */
+        function updateCharacterUI() { if (!hpBar || !mpBar || !attributesSummary || !identitySummary || !statusContent || !equipmentContent || !inventoryList || !inventorySummary) { console.warn("角色 UI 元素尚未完全准备好 (updateCharacterUI)。"); return; } const char = mockCharacterData; hpBar.style.width = `${Math.round(char.hp / char.maxHp * 100)}%`; hpBar.textContent = `${char.hp}/${char.maxHp}`; mpBar.style.width = `${Math.round(char.mp / char.maxMp * 100)}%`; mpBar.textContent = `${char.mp}/${char.maxMp}`; document.getElementById('attr-str').textContent = char.str; document.getElementById('attr-dex').textContent = char.dex; document.getElementById('attr-con').textContent = char.con; document.getElementById('attr-int').textContent = char.int; document.getElementById('attr-wis').textContent = char.wis; document.getElementById('attr-cha').textContent = char.cha; attributesSummary.textContent = `力 ${char.str} 敏 ${char.dex} 体 ${char.con} 智 ${char.int} 感 ${char.wis} 魅 ${char.cha}`; document.getElementById('info-name').textContent = char.name; document.getElementById('info-faction').textContent = char.faction; document.getElementById('info-identity').textContent = char.identity.join(', '); identitySummary.textContent = char.name; const statusContainer = statusContent.querySelector('.flex'); if (statusContainer) { statusContainer.innerHTML = char.status.map(s => ` <div class="status-item tooltip" data-status-id="${s.id}"> <span class="status-text ${s.positive ? (Math.random() < 0.5 ? 'status-positive-alt' : 'status-positive') : 'status-negative'}"> <i class="${s.icon} mr-1"></i>${s.name} (${s.type}) </span> <span class="tooltiptext">${s.desc}</span> </div>`).join(''); } else { console.error("未找到状态效果容器！"); } const equipmentContainer = equipmentContent.querySelector('.grid'); if (equipmentContainer) { equipmentContainer.innerHTML = Object.entries(char.equipment).map(([slot, item]) => { const iconMap = { weapon: 'fas fa-shield-alt', armor: 'fas fa-tshirt', accessory: 'fas fa-ring', head: 'fas fa-hat-wizard', feet: 'fas fa-shoe-prints'}; const slotNameMap = { weapon: '武器', armor: '护甲', accessory: '饰品', head: '头部', feet: '脚部'}; const isEmpty = !item; return ` <div class="equipment-item tooltip" data-equip-id="${item?.id || `empty_${slot}`}"> <div class="stat-item ${isEmpty ? 'text-gray-400' : ''}"> <span class="stat-label"><i class="${iconMap[slot] || 'fas fa-question'} w-4 text-center mr-1"></i>${slotNameMap[slot] || slot}</span> <span class="stat-value">${item ? item.name : '[空]'}</span> </div> <span class="tooltiptext">${item ? `${item.name}<br>${item.desc}` : `${slotNameMap[slot] || slot}<br>无装备`}</span> </div>`; }).join(''); } else { console.error("未找到装备容器！"); } updateInventoryUI(); Object.keys(collapseState).forEach(id => { if (id === 'status' || id === 'inventory') return; const content = document.getElementById(`${id}-content`); const header = content?.previousElementSibling; if (content && header) { const icon = header.querySelector('.collapsible-icon'); if (icon) { if (collapseState[id]) { content.classList.remove('expanded'); header.classList.remove('expanded'); } else { content.classList.add('expanded'); header.classList.add('expanded'); } } } }); }
+        /**
+         * @description 更新物品栏 UI (保持不变)
+         * @function updateInventoryUI
+         * @returns {void} - 无返回值
+         */
+        function updateInventoryUI() { if (!inventoryList || !inventorySummary) { return; } inventoryList.innerHTML = ''; const char = mockCharacterData; const currentSlotCount = char.inventory.length; inventorySummary.textContent = `${currentSlotCount} / ${char.inventoryCapacity}`; char.inventory.forEach(item => { const itemEl = document.createElement('div'); itemEl.classList.add('item-display', 'tooltip'); itemEl.dataset.itemId = item.id; itemEl.innerHTML = ` <div class="item-icon"> <i class="${item.icon || 'fas fa-box'}"></i> ${item.count > 1 ? `<span class="item-count">${item.count}</span>` : ''} </div> <span class="item-name">${item.name}</span> <span class="tooltiptext">${item.name}<br>${item.desc}</span>`; inventoryList.appendChild(itemEl); }); const emptySlots = char.inventoryCapacity - currentSlotCount; for (let i = 0; i < emptySlots; i++) { const emptyEl = document.createElement('div'); emptyEl.classList.add('item-display', 'cursor-default'); emptyEl.innerHTML = ` <div class="item-icon bg-gray-100 border-gray-200"></div> <span class="item-name text-transparent">.</span>`; inventoryList.appendChild(emptyEl); } }
+
+        // --- 菜单栏与管理员模式功能 (新增/修改) ---
+        /**
+         * @description 切换设置下拉菜单的显示状态
+         * @function toggleSettingsDropdown
+         * @returns {void} - 无返回值
+         */
+        function toggleSettingsDropdown() {
+            settingsDropdownContent.classList.toggle("show");
+        }
+
+        /**
+         * @description 处理菜单项点击事件
+         * @function handleMenuClick
+         * @param {string} action - 点击的菜单项标识
+         * @returns {void} - 无返回值
+         */
+        function handleMenuClick(action) {
+            console.log("菜单项被点击:", action);
+            // 关闭下拉菜单
+            if (settingsDropdownContent.classList.contains('show')) {
+                settingsDropdownContent.classList.remove('show');
+            }
+
+            if (action === 'admin_mode') {
+                // 打开管理员模式选择弹窗
+                openModal('admin');
+            } else {
+                // 其他菜单项的占位逻辑
+                alert(`你点击了 "${action}" 功能 (尚未实现)`);
+            }
+        }
+
+        /**
+         * @description 生成管理员模式选择弹窗的 HTML
+         * @function generateAdminModal
+         * @returns {string} - HTML 字符串
+         */
+        function generateAdminModal() {
+            return `
+                <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+                <h3 class="modal-title">管理员模式</h3>
+                <div class="space-y-3">
+                    <button class="btn btn-primary w-full" onclick="loadAdminPage('item_management.html', '物品管理')">物品管理</button>
+                    <button class="btn btn-primary w-full" onclick="loadAdminPage('creature_management.html', '生物管理')">生物管理</button>
+                    <button class="btn btn-primary w-full" onclick="loadAdminPage('event_management.html', '事件管理')">事件管理</button>
+                    <button class="btn btn-primary w-full" onclick="loadAdminPage('map_management.html', '地图管理')">地图管理</button>
+                </div>
+                <div class="mt-6 text-right">
+                    <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                </div>
+            `;
+        }
+
+        /**
+         * @description 初始化管理员模式弹窗（如果需要）
+         * @function initializeAdminModal
+         * @returns {void} - 无返回值
+         */
+        function initializeAdminModal() {
+            console.log("管理员模式弹窗已初始化");
+            // 目前不需要特殊初始化逻辑
+        }
+
+        /**
+         * @description 异步加载并显示指定的管理页面
+         * @async
+         * @function loadAdminPage
+         * @param {string} pageUrl - 要加载的 HTML 文件路径
+         * @param {string} title - 管理页面的标题
+         * @returns {Promise<void>} - 无返回值
+         */
+        async function loadAdminPage(pageUrl, title) {
+            console.log(`尝试加载管理页面: ${pageUrl}`);
+            closeModal(); // 关闭管理员选择弹窗
+
+            const mainContainer = document.querySelector('.main-container');
+            const topMenuBar = document.querySelector('.top-menu-bar');
+
+            // 显示加载状态
+            adminPageContent.innerHTML = '<p class="text-gray-500 italic">正在加载管理页面...</p>';
+            adminPageTitle.textContent = title;
+            if (mainContainer) mainContainer.style.display = 'none'; // 隐藏主游戏界面
+            if (topMenuBar) topMenuBar.style.display = 'none'; // 隐藏顶部菜单栏
+            adminPageOverlay.classList.add('active'); // 显示覆盖层
+
+            try {
+                const response = await fetch(pageUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const pageContent = await response.text();
+                adminPageContent.innerHTML = pageContent; // 将加载的内容注入
+                console.log(`${pageUrl} 加载成功`);
+                // 可以在这里执行加载页面的初始化脚本（如果需要）
+                // 例如: if (pageUrl === 'item_management.html') { initializeItemManagement(); }
+
+            } catch (error) {
+                console.error('加载管理页面失败:', error);
+                adminPageContent.innerHTML = `<p class="text-red-500 font-semibold">加载页面失败: ${error.message}</p><p>请确保文件 '${pageUrl}' 存在于正确的路径下。</p>`;
+            }
+        }
+
+        /**
+         * @description 隐藏管理页面覆盖层，显示主游戏界面
+         * @function hideAdminPage
+         * @returns {void} - 无返回值
+         */
+        function hideAdminPage() {
+            const mainContainer = document.querySelector('.main-container');
+            const topMenuBar = document.querySelector('.top-menu-bar');
+
+            adminPageOverlay.classList.remove('active'); // 隐藏覆盖层
+            if (mainContainer) mainContainer.style.display = 'flex'; // 恢复主游戏界面显示
+            if (topMenuBar) topMenuBar.style.display = 'flex'; // 恢复顶部菜单栏显示
+            adminPageContent.innerHTML = ''; // 清空内容
+            console.log("返回游戏界面");
+        }
+
+
+        // --- 初始化 ---
+        /**
+         * @description DOM 加载完成后执行的初始化函数
+         * @event DOMContentLoaded
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            // 获取所有需要的 DOM 元素引用
+            hpBar = document.getElementById('hp-bar');
+            mpBar = document.getElementById('mp-bar');
+            mapGrid = document.getElementById('map-grid');
+            tileInfoCoords = document.getElementById('current-coords');
+            tileInfoTerrain = document.getElementById('current-terrain');
+            tileInfoWeather = document.getElementById('current-weather');
+            eventDescription = document.getElementById('event-description');
+            eventOptions = document.getElementById('event-options');
+            eventResult = document.getElementById('event-result');
+            modalOverlay = document.getElementById('modal-overlay');
+            detailsBtn = document.getElementById('details-btn');
+            synthesisBtn = document.getElementById('synthesis-btn');
+            inventoryList = document.getElementById('inventory-list');
+            inventorySummary = document.getElementById('inventory-summary');
+            attributesSection = document.getElementById('attributes-section');
+            attributesContent = document.getElementById('attributes-content');
+            attributesSummary = document.getElementById('attributes-summary');
+            identitySection = document.getElementById('identity-section');
+            identityContent = document.getElementById('identity-content');
+            identitySummary = document.getElementById('identity-summary');
+            statusSection = document.getElementById('status-section');
+            statusContent = document.getElementById('status-content');
+            equipmentSection = document.getElementById('equipment-section');
+            equipmentContent = document.getElementById('equipment-content');
+            inventorySection = document.getElementById('inventory-section');
+            inventoryContent = document.getElementById('inventory-content');
+            settingsBtn = document.getElementById('settings-btn');
+            settingsDropdownContent = document.getElementById('settings-dropdown-content');
+            adminPageOverlay = document.getElementById('admin-page-overlay'); // 获取覆盖层
+            adminPageTitle = document.getElementById('admin-page-title');   // 获取覆盖层标题
+            adminPageContent = document.getElementById('admin-page-content'); // 获取覆盖层内容区域
+            adminBackBtn = document.getElementById('admin-back-btn');       // 获取返回按钮
+
+            // 初始渲染 UI
+            renderMap();
+            updateCharacterUI();
+            triggerEvent(currentPlayerPos.x, currentPlayerPos.y);
+
+            // 绑定按钮事件
+            if (detailsBtn) detailsBtn.addEventListener('click', () => openModal('details'));
+            if (synthesisBtn) synthesisBtn.addEventListener('click', () => openModal('synthesis'));
+            if (settingsBtn) settingsBtn.addEventListener('click', toggleSettingsDropdown);
+            if (adminBackBtn) adminBackBtn.addEventListener('click', hideAdminPage); // 绑定返回按钮事件
+
+            // 点击窗口其他区域关闭下拉菜单
+            window.onclick = function(event) {
+                if (!event.target.matches('.settings-button') && !event.target.closest('.settings-button')) {
+                    if (settingsDropdownContent && settingsDropdownContent.classList.contains('show')) {
+                        settingsDropdownContent.classList.remove('show');
+                    }
+                }
+                // 点击弹窗外部不关闭 (由 closeModalOnClickOutside 处理)
+            }
+
+            console.log("游戏 UI Demo (v15 - 管理员模式入口) 初始化完成。");
+        });
+
+    </script>
+
+</body>
+</html>

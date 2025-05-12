@@ -1,0 +1,866 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物品合成 Demo v6.4 </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* v6.2 样式基础 */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .base-item { cursor: grab; transition: background-color 0.2s ease, box-shadow 0.2s ease; border-radius: 0.375rem; padding: 0.5rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); position: relative; }
+        .base-item:active { cursor: grabbing; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .inventory-icon-view .item-wrapper { background-color: #e5e7eb; text-align: center; min-width: 60px; cursor: pointer; position: relative; }
+        .inventory-list-view .item-wrapper { display: flex; align-items: center; justify-content: space-between; background-color: #f9fafb; }
+        .inventory-list-view .item-content { flex-grow: 1; margin-right: 0.5rem; cursor: pointer; }
+        .inventory-list-view .button-group { flex-shrink: 0; }
+        .all-items-icon-view .item-wrapper { background-color: #d1d5db; text-align: center; min-width: 60px; cursor: default; position: relative; }
+        .all-items-list-view .item-wrapper { display: flex; align-items: center; justify-content: space-between; background-color: #f9fafb; }
+        .all-items-list-view .item-content { flex-grow: 1; margin-right: 0.5rem; cursor: default; }
+        .all-items-list-view .button-group { flex-shrink: 0; }
+        .synthesis-item { background-color: #dbeafe; cursor: pointer; }
+        .drop-zone { border: 2px dashed #cbd5e1; min-height: 150px; transition: background-color 0.2s ease, border-color 0.2s ease; border-radius: 0.5rem; background-color: #f9fafb; }
+        .drop-zone.drag-over { background-color: #e0f2fe; border-color: #38bdf8; }
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltiptext { visibility: hidden; width: auto; min-width: 120px; max-width: 250px; background-color: #555; color: #fff; text-align: left; border-radius: 6px; padding: 5px 8px; position: absolute; z-index: 10; bottom: 125%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 0.8rem; white-space: normal; word-wrap: break-word; }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        .tooltip .tooltiptext hr { border-top: 1px solid #777; margin: 4px 0; }
+        .tooltip .tooltiptext .tag { display: inline-block; background-color: #777; border-radius: 4px; padding: 1px 4px; margin: 1px; font-size: 0.75rem; }
+        button { transition: all 0.2s ease; }
+        button:hover { filter: brightness(1.1); }
+        button:active { transform: scale(0.98); }
+        .btn-sm { padding: 0.2rem 0.4rem; font-size: 0.8rem; margin-left: 0.3rem; }
+        .favorite-btn.favorited { color: #ef4444; }
+        .favorite-indicator { color: #f87171; position: absolute; top: 2px; right: 2px; font-size: 0.7rem; pointer-events: none; }
+        .collapsible-hidden { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s ease-out, opacity 0.2s ease-out, margin-bottom 0.3s ease-out, padding-top 0.3s ease-out, padding-bottom 0.3s ease-out; margin-bottom: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; border-top: none; }
+        .collapsible-visible { max-height: 1000px; opacity: 1; overflow: visible; transition: max-height 0.5s ease-in, opacity 0.3s ease-in 0.1s, margin-bottom 0.3s ease-in, padding-top 0.3s ease-in, padding-bottom 0.3s ease-in; border-top: 1px solid #e5e7eb; }
+        .scrollable-list { flex-grow: 1; overflow-y: auto; padding-right: 0.5rem; min-height: 100px; }
+
+        /* --- 标签筛选 UI v6.3 (Updated for Hover) --- */
+        .tag-filter-container { margin-bottom: 0.5rem; padding: 0.5rem; background-color: #f9fafb; border-radius: 0.375rem; border: 1px solid #e5e7eb; }
+        .tag-categories-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .tag-category { background-color: #e5e7eb; border: 1px solid #d1d5db; color: #374151; padding: 3px 8px; border-radius: 0.375rem; font-size: 0.85rem; cursor: default; position: relative; }
+        .tag-category:hover { background-color: #d1d5db; }
+        .tag-subcategories-row { display: none; flex-wrap: wrap; gap: 0.5rem; padding: 0.5rem; background-color: #f3f4f6; border-radius: 0.375rem; margin-top: 0.5rem; }
+        .tag-category:hover + .tag-subcategories-row, .tag-subcategories-row:hover { display: flex; }
+        .tag-subcategory-btn { display: inline-block; background-color: #e5e7eb; border: 1px solid #d1d5db; color: #374151; padding: 2px 6px; margin: 2px; border-radius: 9999px; font-size: 0.8rem; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; }
+        .tag-subcategory-btn:hover { background-color: #d1d5db; }
+        .tag-subcategory-btn.selected { background-color: #60a5fa; border-color: #3b82f6; color: white; }
+        #selected-tags-display { margin-top: 0.5rem; font-size: 0.8rem; color: #4b5563; min-height: 1.5em; }
+        #selected-tags-display .tag { display: inline-block; background-color: #60a5fa; color: white; padding: 1px 5px; margin: 2px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
+        #selected-tags-display .tag:hover::after { content: ' [移除]'; }
+
+        /* --- 物品编辑/新增 Modal --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 50; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+        .modal-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
+        .modal-close-btn { position: absolute; top: 0.5rem; right: 0.75rem; font-size: 1.5rem; color: #9ca3af; cursor: pointer; background: none; border: none; padding: 0; }
+        .modal-close-btn:hover { color: #374151; }
+        .modal-tag-section { margin-top: 1rem; border-top: 1px solid #e5e7eb; padding-top: 1rem; }
+        .modal-tag-category { margin-bottom: 0.5rem; }
+        .modal-tag-category label { font-weight: 500; display: block; margin-bottom: 0.25rem; }
+        .modal-tag-checkbox-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .modal-tag-checkbox-group label { display: flex; align-items: center; font-size: 0.9rem; cursor: pointer; }
+        .modal-tag-checkbox-group input[type="checkbox"] { margin-right: 0.25rem; }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="p-4">
+
+    <h1 class="text-2xl font-bold text-center mb-6 text-gray-800">物品合成 6.4 </h1>
+
+    <div class="flex justify-center items-center flex-wrap space-x-4 mb-6">
+        <button id="import-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow mb-2 md:mb-0">导入数据</button>
+        <input type="file" id="import-file" accept=".json" style="display: none;">
+        <button id="export-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow mb-2 md:mb-0">导出数据</button>
+        <div class="ml-0 md:ml-6 mb-2 md:mb-0">
+            <label for="api-key-input" class="text-sm font-medium text-gray-600 mr-2">通义千问API 秘钥:</label>
+            <input type="password" id="api-key-input" placeholder="输入你的 API Key" class="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm w-64">
+        </div>
+    </div>
+
+    <div class="flex flex-col md:flex-row gap-6">
+        <div class="w-full md:w-1/4 bg-white p-4 rounded-lg shadow-md flex flex-col">
+            <div class="flex justify-end mb-3">
+                <button id="toggle-inventory-manager-button" class="text-sm bg-cyan-500 hover:bg-cyan-600 text-white py-1 px-2 rounded">查看物品管理</button>
+            </div>
+            <div id="inventory-section" class="flex flex-col flex-grow collapsible-visible">
+                <div class="flex justify-between items-center mb-3 flex-wrap">
+                    <h2 class="text-lg font-semibold text-gray-700 mr-4">玩家库存</h2>
+                    <div class="flex items-center space-x-2">
+                        <select id="inventory-sort-select" class="text-sm p-1 border border-gray-300 rounded focus:outline-none">
+                            <option value="default">默认排序</option>
+                            <option value="favorite">收藏优先</option>
+                            <option value="common">常用优先</option>
+                            <option value="favcommon">收藏且常用</option>
+                        </select>
+                        <button id="toggle-inventory-view-button" class="text-sm bg-gray-500 hover:bg-gray-600 text-white py-1 px-2 rounded">视图</button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <input type="text" id="filter-inventory-input" placeholder="筛选库存物品名称..." class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 mb-2">
+                    <div id="inventory-tag-filter" class="tag-filter-container">
+                        <h4 class="text-sm font-medium mb-2">标签筛选:</h4>
+                        <div id="inventory-tag-categories-row" class="tag-categories-row"></div>
+                        <div id="inventory-tag-subcategories-row" class="tag-subcategories-row"></div>
+                        <div id="inventory-selected-tags-display"></div>
+                    </div>
+                </div>
+                <h3 class="text-md font-semibold mb-2 text-gray-600">持有物品 (<span id="inventory-view-mode-indicator">图标</span>模式)</h3>
+                <div id="inventory-list-container" class="scrollable-list">
+                    <div id="inventory-list" class="space-y-1"></div>
+                </div>
+            </div>
+            <div id="manager-section" class="collapsible-hidden flex flex-col flex-grow">
+                <div class="flex justify-between items-center pt-4 mb-3 flex-wrap">
+                    <h2 class="text-lg font-semibold text-gray-700 mr-4">物品管理 (知识库)</h2>
+                    <div class="flex items-center space-x-2">
+                        <button id="open-add-item-modal-button" class="text-sm bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">＋ 添加物品</button>
+                        <select id="all-items-sort-select" class="text-sm p-1 border border-gray-300 rounded focus:outline-none">
+                            <option value="default">默认排序</option>
+                            <option value="favorite">收藏优先</option>
+                            <option value="common">常用优先</option>
+                            <option value="favcommon">收藏且常用</option>
+                        </select>
+                        <button id="toggle-all-items-view-button" class="text-sm bg-gray-500 hover:bg-gray-600 text-white py-1 px-2 rounded">视图</button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <input type="text" id="filter-all-items-input" placeholder="筛选所有物品名称..." class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 mb-2">
+                    <div id="all-items-tag-filter" class="tag-filter-container">
+                        <h4 class="text-sm font-medium mb-2">标签筛选:</h4>
+                        <div id="all-items-tag-categories-row" class="tag-categories-row"></div>
+                        <div id="all-items-tag-subcategories-row" class="tag-subcategories-row"></div>
+                        <div id="all-items-selected-tags-display"></div>
+                    </div>
+                </div>
+                <h3 class="text-md font-semibold mb-2 text-gray-600">所有已知物品 (<span id="all-items-view-mode-indicator">图标</span>模式)</h3>
+                <div id="all-items-list-container" class="scrollable-list">
+                    <div id="all-items-list" class="space-y-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full md:w-1/2 bg-white p-4 rounded-lg shadow-md flex flex-col">
+            <h2 class="text-lg font-semibold mb-3 text-gray-700">合成区域</h2>
+            <p class="text-sm text-gray-500 mb-1">从左侧 **库存** 拖拽或点击物品到下方区域进行合成。</p>
+            <p class="text-xs text-gray-400 mb-3">提示：点击合成区域内的物品可将其移除。</p>
+            <div id="synthesis-area" class="drop-zone flex-grow p-4 flex flex-wrap gap-2 items-start content-start mb-4"></div>
+            <div class="mb-4">
+                <label for="synthesis-suggestion" class="block text-sm font-medium text-gray-600 mb-1">合成建议 (可选, 用于指导 AI):</label>
+                <input type="text" id="synthesis-suggestion" placeholder="例如：50%概率出钻石、需要消耗什么，能生产什么..." class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+            </div>
+            <div id="synthesis-result" class="text-center font-medium text-gray-700 h-6 mb-2"></div>
+            <button id="synthesize-button" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded mt-auto">合成 (=)</button>
+            <div id="loading-indicator" class="text-center text-blue-500 mt-2" style="display: none;">正在调用 AI 生成公式...</div>
+        </div>
+
+        <div class="w-full md:w-1/4 bg-white p-4 rounded-lg shadow-md flex flex-col">
+            <h2 class="text-lg font-semibold mb-3 text-gray-700">相关合成公式</h2>
+            <div id="formula-list" class="space-y-1 max-h-[500px] overflow-y-auto pr-2 flex-grow">
+                <p id="formula-placeholder" class="text-gray-500 text-sm italic">将物品放入合成区以查看相关公式...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="item-modal" class="modal-overlay">
+        <div class="modal-content relative">
+            <button id="modal-close-button" class="modal-close-btn" title="关闭">&times;</button>
+            <h3 id="modal-title" class="modal-title">添加新物品</h3>
+            <form id="item-modal-form">
+                <input type="hidden" id="modal-item-id">
+                <div class="mb-4">
+                    <label for="modal-item-name" class="block text-sm font-medium text-gray-700 mb-1">物品名称:</label>
+                    <input type="text" id="modal-item-name" required class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+                <div class="mb-4">
+                    <label for="modal-item-desc" class="block text-sm font-medium text-gray-700 mb-1">物品描述:</label>
+                    <textarea id="modal-item-desc" rows="3" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"></textarea>
+                </div>
+                <div class="modal-tag-section">
+                    <h4 class="text-md font-semibold mb-2 text-gray-700">分类标签:</h4>
+                    <div id="modal-tag-selection" class="space-y-3"></div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="modal-cancel-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">取消</button>
+                    <button type="submit" id="modal-save-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">保存物品</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ========================================================================
+        // 状态变量 (State Variables)
+        // ========================================================================
+        let isInventoryManagerVisible = false;
+        let isInventoryEditMode = false;
+        let isAllItemsEditMode = false;
+        let currentInventorySort = 'default';
+        let currentAllItemsSort = 'default';
+        let selectedInventoryTags = new Set();
+        let selectedAllItemsTags = new Set();
+        let activeTagFilterCategory = null;
+        let activeTagFilterContainerId = null;
+
+        // ========================================================================
+        // 数据存储 (Data Structures)
+        // ========================================================================
+        let allItems = [
+            { id: 'item-1', name: '水', description: '纯净的 H2O，生命之源。', tags: ["类型:物品", "形态:液态", "构成:化合物", "科技:自然形成"] },
+            { id: 'item-2', name: '火', description: '燃烧现象，带来光和热。', tags: ["类型:物品", "形态:能量态", "科技:自然形成"] },
+            { id: 'item-3', name: '土', description: '构成大地的基础物质。', tags: ["类型:物品", "形态:固态", "构成:化合物", "科技:自然形成"] },
+            { id: 'item-4', name: '空气', description: '最常见的气体混合物。', tags: ["类型:物品", "形态:气态", "构成:化合物", "科技:自然形成"] },
+            { id: 'item-5', name: '泥', description: '水和土混合后形成的柔软物质。', tags: ["类型:物品", "形态:固态", "构成:化合物", "科技:自然形成"] },
+            { id: 'item-6', name: '橡木种子', description: '生机勃勃的橡木种子。', tags: ["类型:物品", "形态:固态", "生命:植物", "构成:有机物", "科技:自然形成"] },
+            { id: 'item-7', name: '熔岩', description: '炽热融化的岩石。', tags: ["类型:物品", "形态:液态", "构成:化合物", "科技:自然形成"] },
+            { id: 'item-8', name: '电', description: '电力，一种狂暴的能量。', tags: ["类型:物品", "形态:能量态", "科技:自然形成"] },
+            { id: 'item-9', name: '氢气', description: '最轻的气体。', tags: ["类型:物品", "形态:气态", "构成:单质", "科技:自然形成"] },
+            { id: 'item-10', name: '氧气', description: '支持燃烧和呼吸的气体。', tags: ["类型:物品", "形态:气态", "构成:单质", "科技:自然形成"] },
+            { id: 'item-11', name: '橡树幼苗', description: '刚发芽的橡树。', tags: ["类型:物品", "形态:固态", "生命:植物", "构成:有机物", "科技:自然形成"] }
+        ];
+        let playerInventory = new Map([ ['item-1', 5], ['item-3', 3], ['item-6', 2], ['item-5', 1] ]);
+        let favorites = ['item-1', 'item-6'];
+        let commonUsage = new Map([ ['item-1', 10], ['item-3', 8], ['item-5', 5] ]);
+        let allFormulas = new Map();
+        allFormulas.set(generateFormulaKey(['土', '水']), { outputs: [{ name: '泥', description: '水和土的混合物...', probability: 100 }], consumedInputs: ['土', '水'] });
+        allFormulas.set(generateFormulaKey(['火', '土']), { outputs: [{ name: '熔岩', description: '炽热融化的岩石...', probability: 100 }], consumedInputs: ['火', '土'] });
+        allFormulas.set(generateFormulaKey(['水', '水', '水', '电']), { outputs: [{ name: '氢气', description: '...', probability: 100 }, { name: '氢气', description: '...', probability: 100 }, { name: '氧气', description: '...', probability: 100 }], consumedInputs: ['水', '电'] });
+        allFormulas.set(generateFormulaKey(['泥', '橡木种子']), { outputs: [{ name: '橡树幼苗', description: '刚发芽的橡树...', probability: 100 }], consumedInputs: ['泥', '橡木种子'] });
+        const tagCategories = {
+            "类型": ["物品", "环境地形", "抽象概念", "人类行为"],
+            "形态": ["固态", "液态", "气态", "能量态"],
+            "生命": ["动物", "植物", "微生物", "非生命", "超自然生命"],
+            "构成": ["单质", "化合物", "金属", "有机物", "超自然物质"],
+            "功能": ["武器", "工具", "防具", "食物", "消耗品", "任务物品", "载具", "超自然能力"],
+            "科技": ["自然形成", "原始", "古代", "近代", "现代", "未来", "超自然技术"]
+        };
+
+        // ========================================================================
+        // DOM 元素引用 (DOM References)
+        // ========================================================================
+        const toggleInventoryManagerButton = document.getElementById('toggle-inventory-manager-button');
+        const inventorySection = document.getElementById('inventory-section');
+        const managerSection = document.getElementById('manager-section');
+        const toggleInventoryViewButton = document.getElementById('toggle-inventory-view-button');
+        const filterInventoryInput = document.getElementById('filter-inventory-input');
+        const inventoryViewModeIndicator = document.getElementById('inventory-view-mode-indicator');
+        const inventoryListContainer = document.getElementById('inventory-list-container');
+        const inventoryListDiv = document.getElementById('inventory-list');
+        const inventorySortSelect = document.getElementById('inventory-sort-select');
+        const inventoryTagFilterContainer = document.getElementById('inventory-tag-filter');
+        const inventoryTagCategoriesRow = document.getElementById('inventory-tag-categories-row');
+        const inventoryTagSubcategoriesRow = document.getElementById('inventory-tag-subcategories-row');
+        const inventorySelectedTagsDiv = document.getElementById('inventory-selected-tags-display');
+
+        const toggleAllItemsViewButton = document.getElementById('toggle-all-items-view-button');
+        const filterAllItemsInput = document.getElementById('filter-all-items-input');
+        const allItemsViewModeIndicator = document.getElementById('all-items-view-mode-indicator');
+        const allItemsListContainer = document.getElementById('all-items-list-container');
+        const allItemsListDiv = document.getElementById('all-items-list');
+        const allItemsSortSelect = document.getElementById('all-items-sort-select');
+        const allItemsTagFilterContainer = document.getElementById('all-items-tag-filter');
+        const allItemsTagCategoriesRow = document.getElementById('all-items-tag-categories-row');
+        const allItemsTagSubcategoriesRow = document.getElementById('all-items-tag-subcategories-row');
+        const allItemsSelectedTagsDiv = document.getElementById('all-items-selected-tags-display');
+
+        const openAddItemModalButton = document.getElementById('open-add-item-modal-button');
+        const synthesisAreaDiv = document.getElementById('synthesis-area');
+        const synthesisSuggestionInput = document.getElementById('synthesis-suggestion');
+        const synthesisResultDiv = document.getElementById('synthesis-result');
+        const synthesizeButton = document.getElementById('synthesize-button');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        const formulaListDiv = document.getElementById('formula-list');
+        const formulaPlaceholder = document.getElementById('formula-placeholder');
+
+        const importButton = document.getElementById('import-button');
+        const exportButton = document.getElementById('export-button');
+        const importFileInput = document.getElementById('import-file');
+        const apiKeyInput = document.getElementById('api-key-input');
+
+        const itemModal = document.getElementById('item-modal');
+        const modalCloseButton = document.getElementById('modal-close-button');
+        const modalTitle = document.getElementById('modal-title');
+        const itemModalForm = document.getElementById('item-modal-form');
+        const modalItemIdInput = document.getElementById('modal-item-id');
+        const modalItemNameInput = document.getElementById('modal-item-name');
+        const modalItemDescInput = document.getElementById('modal-item-desc');
+        const modalTagSelectionDiv = document.getElementById('modal-tag-selection');
+        const modalCancelButton = document.getElementById('modal-cancel-button');
+        const modalSaveButton = document.getElementById('modal-save-button');
+
+        // ========================================================================
+        // 核心功能函数 (Core Functions)
+        // ========================================================================
+        function generateId(prefix = 'item') { return prefix + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7); }
+        function generateFormulaKey(inputItemNames) { if (!inputItemNames || inputItemNames.length === 0) { console.warn("generateFormulaKey: 输入为空"); return null; } const frequencyMap = {}; inputItemNames.forEach(name => { frequencyMap[name] = (frequencyMap[name] || 0) + 1; }); const sortedEntries = Object.entries(frequencyMap).sort((a, b) => a[0].localeCompare(b[0])); return JSON.stringify(sortedEntries); }
+        function formatFormulaKeyForDisplay(formulaKey) { try { const entries = JSON.parse(formulaKey); return entries.map(([name, count]) => count > 1 ? `${name} (x${count})` : name).join(' + '); } catch (e) { console.error("解析 Key 失败:", formulaKey, e); return "错误 Key"; } }
+        function addToInventory(itemId, count = 1) { if (count <= 0) return; const currentCount = playerInventory.get(itemId) || 0; playerInventory.set(itemId, currentCount + count); console.log(`添加 ${count} x ${allItems.find(i=>i.id===itemId)?.name} 到库存`); renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); }
+        function removeFromInventory(itemId, count = 1) { if (count <= 0) return; const currentCount = playerInventory.get(itemId) || 0; const newCount = Math.max(0, currentCount - count); if (newCount === 0) { playerInventory.delete(itemId); console.log(`${allItems.find(i=>i.id===itemId)?.name} 从库存移除`); } else { playerInventory.set(itemId, newCount); console.log(`移除 ${count} x ${allItems.find(i=>i.id===itemId)?.name}, 剩余 ${newCount}`); } renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); }
+        function checkInventoryHasItems(formulaKey) { try { const requiredItems = JSON.parse(formulaKey); for (const [name, requiredCount] of requiredItems) { const item = allItems.find(i => i.name === name); if (!item) return false; const currentCount = playerInventory.get(item.id) || 0; if (currentCount < requiredCount) return false; } return true; } catch (e) { console.error("检查库存时解析 Key 失败:", formulaKey, e); return false; } }
+        function consumeItemsFromInventory(formulaKey, consumedInputNames) { try { const requiredItems = JSON.parse(formulaKey); requiredItems.forEach(([name, requiredCount]) => { if (consumedInputNames.includes(name)) { const item = allItems.find(i => i.name === name); if (item) { removeFromInventory(item.id, requiredCount); } else { console.warn(`尝试消耗不存在的基础物品: ${name}`); } } }); } catch (e) { console.error("消耗物品时解析 Key 失败:", formulaKey, e); } }
+        function toggleFavorite(itemId) { const index = favorites.indexOf(itemId); if (index > -1) { favorites.splice(index, 1); console.log(`物品 ${itemId} 已取消收藏`); } else { favorites.push(itemId); console.log(`物品 ${itemId} 已收藏`); } renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); }
+        function incrementUsageCount(itemIds) { const ids = Array.isArray(itemIds) ? itemIds : [itemIds]; ids.forEach(id => { const currentCount = commonUsage.get(id) || 0; commonUsage.set(id, currentCount + 1); }); if (currentInventorySort.includes('common')) { renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); } if (currentAllItemsSort.includes('common')) { renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); } }
+/**
+ * 渲染标签筛选UI
+ * @param {string} containerIdPrefix - 容器ID前缀（如'inventory'或'all-items'），用于定位DOM元素
+ * @param {Object} tagCategories - 标签分类对象，键为一级分类，值为二级分类数组
+ * @param {Set} selectedTagsSet - 当前选中的标签集合（Set对象）
+ * @param {Function} onTagToggle - 点击标签时的回调函数，用于切换标签选中状态
+ */
+ function renderTagFilterUI(containerIdPrefix, tagCategories, selectedTagsSet, onTagToggle) {
+    // 获取一级分类容器元素
+    const categoriesRow = document.getElementById(`${containerIdPrefix}-tag-categories-row`);
+    // 获取二级分类容器元素
+    const subcategoriesRow = document.getElementById(`${containerIdPrefix}-tag-subcategories-row`);
+    // 获取已选中标签显示区域元素
+    const selectedTagsDisplay = document.getElementById(`${containerIdPrefix}-selected-tags-display`);
+    
+    // 清空一级分类容器内容
+    categoriesRow.innerHTML = '';
+    // 清空二级分类容器内容
+    subcategoriesRow.innerHTML = '';
+    // 清空已选中标签显示区域内容
+    selectedTagsDisplay.innerHTML = '';
+
+    // 定义隐藏延时变量，用于控制二级分类的隐藏延迟
+    let hideTimeout;
+
+    // 遍历所有一级分类
+    Object.keys(tagCategories).forEach(category => {
+        // 创建一级分类的DIV元素
+        const categoryDiv = document.createElement('div');
+        // 添加CSS类'tag-category'，用于样式控制
+        categoryDiv.classList.add('tag-category');
+        // 设置一级分类的显示文本
+        categoryDiv.textContent = category;
+
+        // 添加鼠标进入事件监听器
+        categoryDiv.addEventListener('mouseenter', () => {
+            // 清除任何现有的隐藏延时
+            clearTimeout(hideTimeout);
+            // 渲染对应一级分类的二级分类
+            renderSubcategories(subcategoriesRow, category, selectedTagsSet, onTagToggle);
+            // 显示二级分类容器（使用flex布局）
+            subcategoriesRow.style.display = 'flex';
+        });
+
+        // 添加鼠标离开事件监听器
+        categoryDiv.addEventListener('mouseleave', () => {
+            // 设置100毫秒延时后隐藏二级分类
+            hideTimeout = setTimeout(() => {
+                // 检查鼠标是否仍在二级分类容器上
+                if (!subcategoriesRow.matches(':hover')) {
+                    // 如果不在，则隐藏二级分类
+                    //subcategoriesRow.style.display = 'none';
+                }
+            }, 100);
+        });
+
+        // 将一级分类DIV添加到容器中
+        categoriesRow.appendChild(categoryDiv);
+    });
+
+    // 为二级分类容器添加鼠标进入事件监听器
+    subcategoriesRow.addEventListener('mouseenter', () => {
+        // 清除隐藏延时，保持二级分类显示
+        clearTimeout(hideTimeout);
+    });
+
+    // 为二级分类容器添加鼠标离开事件监听器
+   // subcategoriesRow.addEventListener('mouseleave', () => {
+        // 设置100毫秒延时后隐藏二级分类
+    //    hideTimeout = setTimeout(() => {
+     //       subcategoriesRow.style.display = 'none';
+     //   }, 100);
+    //});
+
+    // 更新已选中标签的显示
+    updateSelectedTagsDisplay(selectedTagsDisplay, selectedTagsSet, onTagToggle);
+}
+
+/**
+ * 更新已选中标签的显示区域
+ * @param {HTMLElement} displayContainer - 显示已选中标签的容器元素
+ * @param {Set} selectedTagsSet - 当前选中的标签集合
+ * @param {Function} onTagToggle - 点击标签时的回调函数
+ */
+ function updateSelectedTagsDisplay(displayContainer, selectedTagsSet, onTagToggle) {
+    // 清空显示容器内容
+    displayContainer.innerHTML = '';
+    // 检查selectedTagsSet是否为Set对象
+    if (!(selectedTagsSet instanceof Set)) {
+        // 如果不是Set，记录错误并退出
+        console.error('selectedTagsSet is not a Set:', selectedTagsSet);
+        return;
+    }
+    // 遍历选中的标签
+    selectedTagsSet.forEach(tag => {
+        // 创建标签显示的span元素
+        const tagSpan = document.createElement('span');
+        // 设置标签文本
+        tagSpan.textContent = tag;
+        // 添加CSS类'selected-tag'，用于样式控制
+        tagSpan.classList.add('selected-tag');
+        // 添加点击事件监听器，用于切换标签状态
+        tagSpan.addEventListener('click', () => onTagToggle(tag));
+        // 将标签span添加到显示容器
+        displayContainer.appendChild(tagSpan);
+    });
+}
+
+/**
+ * 渲染二级分类
+ * @param {HTMLElement} container - 二级分类的容器元素
+ * @param {string} category - 当前一级分类名称
+ * @param {Set} selectedTagsSet - 当前选中的标签集合
+ * @param {Function} onTagToggle - 点击二级分类标签时的回调函数
+ */
+function renderSubcategories(container, category, selectedTagsSet, onTagToggle) {
+    // 清空二级分类容器内容
+    container.innerHTML = '';
+    // 检查是否存在该一级分类的二级分类
+    if (tagCategories[category]) {
+        // 遍历二级分类
+        tagCategories[category].forEach(subCategory => {
+            // 构造标签字符串，格式为“一级分类:二级分类”
+            const tagString = `${category}:${subCategory}`;
+            // 创建二级分类按钮
+            const tagButton = document.createElement('button');
+            // 添加CSS类'tag-subcategory-btn'，用于样式控制
+            tagButton.classList.add('tag-subcategory-btn');
+            // 设置按钮文本为二级分类名称
+            tagButton.textContent = subCategory;
+            // 存储标签字符串到dataset，方便事件处理
+            tagButton.dataset.tag = tagString;
+            // 如果标签已被选中，添加'selected'类
+            if (selectedTagsSet.has(tagString)) {
+                tagButton.classList.add('selected');
+            }
+            // 添加点击事件监听器，调用切换标签的回调
+            tagButton.addEventListener('click', () => onTagToggle(tagString));
+            // 将按钮添加到二级分类容器
+            container.appendChild(tagButton);
+        });
+    }
+}
+
+/**
+ * 切换库存标签筛选状态
+ * @param {string} tagString - 标签字符串，格式为“一级分类:二级分类”
+ */
+ function toggleInventoryTagFilter(tagString) { 
+    // 检查标签是否已选中
+    if (selectedInventoryTags.has(tagString)) { 
+        // 如果已选中，则移除
+        selectedInventoryTags.delete(tagString); 
+    } else { 
+        // 如果未选中，则添加
+        selectedInventoryTags.add(tagString); 
+    } 
+    // 重新渲染库存标签筛选UI
+    renderTagFilterUI('inventory', tagCategories, selectedInventoryTags, toggleInventoryTagFilter); 
+    // 更新库存列表显示，应用新的标签筛选
+    renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); 
+}
+
+/**
+ * 切换所有物品标签筛选状态
+ * @param {string} tagString - 标签字符串，格式为“一级分类:二级分类”
+ */
+function toggleAllItemsTagFilter(tagString) { 
+    // 检查标签是否已选中
+    if (selectedAllItemsTags.has(tagString)) { 
+        // 如果已选中，则移除
+        selectedAllItemsTags.delete(tagString); 
+    } else { 
+        // 如果未选中，则添加
+        selectedAllItemsTags.add(tagString); 
+    } 
+    // 重新渲染所有物品标签筛选UI
+    renderTagFilterUI('all-items', tagCategories, selectedAllItemsTags, toggleAllItemsTagFilter); 
+    // 更新所有物品列表显示，应用新的标签筛选
+    renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); 
+}
+
+function initializeTagFilters() {
+    renderTagFilterUI('inventory', tagCategories, selectedInventoryTags, toggleInventoryTagFilter);
+    renderTagFilterUI('all-items', tagCategories, selectedAllItemsTags, toggleAllItemsTagFilter);
+}
+
+
+        function addItemToSynthesisArea(itemId) {
+            const item = allItems.find(i => i.id === itemId);
+            if (item && playerInventory.has(itemId) && playerInventory.get(itemId) > 0) {
+                const currentInArea = Array.from(synthesisAreaDiv.querySelectorAll('.synthesis-item')).filter(el => el.dataset.itemId === itemId).length;
+                if (currentInArea < playerInventory.get(itemId)) {
+                    const itemElement = document.createElement('div');
+                    const synthesisItemId = generateId('synth');
+                    itemElement.id = synthesisItemId;
+                    itemElement.classList.add('synthesis-item', 'base-item', 'tooltip');
+                    itemElement.textContent = item.name;
+                    itemElement.dataset.itemId = item.id;
+                    const tooltipText = document.createElement('span');
+                    tooltipText.classList.add('tooltiptext');
+                    tooltipText.textContent = item.description || '无描述';
+                    itemElement.appendChild(tooltipText);
+                    itemElement.addEventListener('click', () => { itemElement.remove(); renderFilteredFormulaList(); });
+                    synthesisAreaDiv.appendChild(itemElement);
+                    renderFilteredFormulaList();
+                    console.log(`添加 "${item.name}" 到合成区`);
+                } else {
+                    showTemporaryMessage(synthesisResultDiv, `库存中 "${item.name}" 数量不足！`, 'text-yellow-600');
+                    console.warn(`无法添加更多 "${item.name}" 到合成区`);
+                }
+            } else {
+                console.warn('尝试添加不存在或库存为 0 的物品到合成区:', itemId);
+                showTemporaryMessage(synthesisResultDiv, `无法添加物品 (可能库存不足)`, 'text-red-500');
+            }
+        }
+        function handleInventoryItemClick(event) { if (event.target.classList.contains('item-content')) { const itemId = event.target.dataset.itemId; addItemToSynthesisArea(itemId); } }
+        function handleAddBaseItemToInventory(event) { const itemId = event.target.dataset.itemId; const item = allItems.find(i => i.id === itemId); if (item) { addToInventory(itemId, 1); console.log(`已将 "${item.name}" 添加到库存`); showTemporaryMessage(synthesisResultDiv, `已添加 ${item.name} 到库存`, 'text-blue-500'); } else { console.error("尝试添加不存在的基础物品到库存:", itemId); } }
+        function handleEditBaseItem(event) {
+            const itemId = event.target.dataset.itemId;
+            const itemToEdit = allItems.find(i => i.id === itemId);
+            if (itemToEdit) {
+                openItemModal('edit', itemToEdit);
+            } else {
+                console.error("无法找到要编辑的物品:", itemId);
+            }
+        }
+        function handleDeleteBaseItem(event) { const itemId = event.target.dataset.itemId; const itemIndex = allItems.findIndex(i => i.id === itemId); if (itemIndex === -1) return; const itemToDelete = allItems[itemIndex]; if (!confirm(`【警告】确定要彻底删除基础物品 "${itemToDelete.name}" 吗？\n这将同时从玩家库存和所有相关合成公式中移除该物品！此操作通常不可逆。`)) { return; } const deletedItemName = itemToDelete.name; allItems.splice(itemIndex, 1); playerInventory.delete(itemId); const formulasToDelete = []; allFormulas.forEach((formulaData, key) => { let inputs; try { inputs = JSON.parse(key); } catch (e) { return; } const involvesDeletedItem = inputs.some(([name, count]) => name === deletedItemName) || formulaData.outputs.some(out => out.name === deletedItemName) || (formulaData.consumedInputs && formulaData.consumedInputs.includes(deletedItemName)); if (involvesDeletedItem) { formulasToDelete.push(key); } }); formulasToDelete.forEach(key => { allFormulas.delete(key); }); synthesisAreaDiv.querySelectorAll(`[data-item-id="${itemId}"]`).forEach(el => el.remove()); renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); renderFilteredFormulaList(); console.log('基础物品已彻底删除:', deletedItemName); }
+        function handleDeleteFormula(event) { const formulaKey = event.target.dataset.formulaKey; if (allFormulas.has(formulaKey)) { const formulaData = allFormulas.get(formulaKey); const formulaText = `${formatFormulaKeyForDisplay(formulaKey)} -> ${formulaData.outputs.map(o=>o.name).join('+')}`; if (confirm(`确定要删除公式 "${formulaText}" 吗？`)) { allFormulas.delete(formulaKey); renderFilteredFormulaList(); console.log('公式已删除:', formulaText); } } }
+        function addNewBaseItem(name, description, tags) {
+            const trimmedName = name.trim();
+            const trimmedDesc = description.trim();
+            const validTags = Array.isArray(tags) ? tags : [];
+            if (!trimmedName) { alert('物品名称不能为空！'); return false; }
+            if (allItems.some(item => item.name === trimmedName)) { alert(`物品 "${trimmedName}" 已经存在！`); return false; }
+            const newItem = { id: generateId('item'), name: trimmedName, description: trimmedDesc, tags: validTags };
+            allItems.push(newItem);
+            renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags);
+            console.log('新基础物品已添加:', newItem);
+            return true;
+        }
+        function addFormula(inputItemNames, formulaData) { const formulaKey = generateFormulaKey(inputItemNames); if (!formulaKey) return false; if (!formulaData || !Array.isArray(formulaData.outputs) || !Array.isArray(formulaData.consumedInputs)) { console.error("尝试添加格式错误的公式:", formulaData); return false; } formulaData.outputs.forEach(out => { if (out.probability === undefined) out.probability = 100; }); if (!allFormulas.has(formulaKey)) { allFormulas.set(formulaKey, formulaData); renderFilteredFormulaList(); console.log('新公式添加:', formatFormulaKeyForDisplay(formulaKey)); return true; } return false; }
+        function findOrCreateBaseItem(name, description, suggestedTags = []) { if (!name) { console.error("findOrCreateBaseItem: 名称不能为空"); return null; } let existingItem = allItems.find(item => item.name === name); if (existingItem) { return existingItem; } else { console.log(`基础物品 "${name}" 不存在，正在创建...`); const newItem = { id: generateId('item'), name: name, description: description || 'AI 生成', tags: Array.isArray(suggestedTags) ? suggestedTags : [] }; allItems.push(newItem); renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); return newItem; } }
+        function rollProbability(outputs) { const producedItemIds = []; outputs.forEach(output => { const probability = output.probability === undefined ? 100 : output.probability; if (Math.random() * 100 < probability) { const baseItem = findOrCreateBaseItem(output.name, output.description, output.suggestedTags); if (baseItem) { producedItemIds.push(baseItem.id); } else { console.error(`未能找到或创建: ${output.name}`); } } }); return producedItemIds; }
+        function getRelevantContext(inputItemNames, maxFormulasPerItem = 5, maxTotalFormulas = 50, maxTotalItems = 50) { const uniqueInputNames = [...new Set(inputItemNames)]; const relevantItemNames = new Set(uniqueInputNames); const relevantFormulaKeys = new Set(); const formulaCountPerInput = {}; allFormulas.forEach((formulaData, key) => { let inputs; try { inputs = JSON.parse(key); } catch (e) { return; } const formulaInputNames = inputs.map(([name, count]) => name); const formulaOutputNames = formulaData.outputs.map(out => out.name); let isRelevant = false; for (const inputName of uniqueInputNames) { if (formulaInputNames.includes(inputName) || formulaOutputNames.includes(inputName)) { if ((formulaCountPerInput[inputName] || 0) < maxFormulasPerItem) { isRelevant = true; formulaCountPerInput[inputName] = (formulaCountPerInput[inputName] || 0) + 1; } } } if (isRelevant && relevantFormulaKeys.size < maxTotalFormulas) { relevantFormulaKeys.add(key); formulaInputNames.forEach(name => relevantItemNames.add(name)); formulaOutputNames.forEach(name => relevantItemNames.add(name)); } }); const relevantItems = allItems.filter(item => relevantItemNames.has(item.name)).slice(0, maxTotalItems); const relevantFormulas = Array.from(relevantFormulaKeys).map(key => ({ key: key, data: allFormulas.get(key) })); return { relevantItems, relevantFormulas }; }
+        async function callAIForFormula(inputItems, suggestion = '') { if (!DASHSCOPE_API_KEY || DASHSCOPE_API_KEY === 'xxxxxx') { alert('请设置 API Key！'); return { error: 'API Key 未设置' }; } loadingIndicator.style.display = 'block'; synthesisResultDiv.textContent = ''; const inputItemNamesForAI = inputItems.map(item => item.name); const { relevantItems, relevantFormulas } = getRelevantContext(inputItemNamesForAI); const contextItems = relevantItems.map(item => `- ${item.name} [${(item.tags || []).join(', ')}]: ${item.description}`).join('\n'); const contextFormulas = relevantFormulas.map(f => { const inputsStr = formatFormulaKeyForDisplay(f.key); const outputsStr = f.data.outputs.map(o => o.name).join(' + '); const consumedStr = f.data.consumedInputs.length > 0 ? ` (消耗: ${f.data.consumedInputs.join(', ')})` : ''; return `- ${inputsStr} -> ${outputsStr}${consumedStr}`; }).join('\n'); const systemPrompt = `...`; const userPrompt = `合成以下物品: ${inputItemNamesForAI.join(', ')}\n合成建议: ${suggestion || '无'}`; console.log("System Prompt (部分):", systemPrompt.substring(0, 600) + "..."); console.log("User Prompt:", userPrompt); try { const response = await fetch(AI_API_URL, { method: 'POST', headers: { 'Authorization': `Bearer ${DASHSCOPE_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: "qwen-plus", messages: [ { role: "system", content: systemPrompt }, { role: "user", content: userPrompt } ], response_format: { type: "json_object" } }) }); if (!response.ok) { const errorText = await response.text(); throw new Error(`AI API 请求失败: ${response.status} ${errorText}`); } const data = await response.json(); console.log('AI 响应:', data); if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) { try { const content = JSON.parse(data.choices[0].message.content); if (content.outputs && Array.isArray(content.outputs) && content.consumedInputs && Array.isArray(content.consumedInputs)) { loadingIndicator.style.display = 'none'; content.outputs.forEach(out => { if (out.probability === undefined) out.probability = 100; if (out.suggestedTags === undefined) out.suggestedTags = []; }); return content; } else { throw new Error('AI 返回 JSON 格式不正确'); } } catch (parseError) { throw new Error(`解析 AI 返回 JSON 失败: ${parseError}`); } } else { throw new Error('AI 响应结构不符合预期'); } } catch (error) { console.error('调用 AI API 时出错:', error); loadingIndicator.style.display = 'none'; synthesisResultDiv.textContent = `AI 调用失败: ${error.message}`; return { error: error.message }; } }
+        function renderSynthesisArea() { renderFilteredFormulaList(); }
+        function renderPlayerInventory(filter = '', sort = 'default', tagsFilter = new Set()) {
+            inventoryListDiv.innerHTML = '';
+            const lowerCaseFilter = filter.toLowerCase();
+            let inventoryItemIds = Array.from(playerInventory.keys());
+            if (tagsFilter.size > 0) { inventoryItemIds = inventoryItemIds.filter(itemId => { const item = allItems.find(i => i.id === itemId); if (!item || !item.tags) return false; return Array.from(tagsFilter).every(requiredTag => item.tags.includes(requiredTag)); }); }
+            inventoryItemIds = inventoryItemIds.filter(itemId => { const item = allItems.find(i => i.id === itemId); return item && item.name.toLowerCase().includes(lowerCaseFilter); });
+            inventoryItemIds.sort((idA, idB) => { const itemA = allItems.find(i => i.id === idA); const itemB = allItems.find(i => i.id === idB); if (!itemA || !itemB) return 0; const isAFav = favorites.includes(idA); const isBFav = favorites.includes(idB); const usageA = commonUsage.get(idA) || 0; const usageB = commonUsage.get(idB) || 0; switch (sort) { case 'favorite': if (isAFav && !isBFav) return -1; if (!isAFav && isBFav) return 1; if (isAFav && isBFav) return favorites.indexOf(idA) - favorites.indexOf(idB); return itemA.name.localeCompare(itemB.name); case 'common': if (usageA !== usageB) return usageB - usageA; return itemA.name.localeCompare(itemB.name); case 'favcommon': if (!isAFav) return 1; if (!isBFav) return -1; if (usageA !== usageB) return usageB - usageA; return favorites.indexOf(idA) - favorites.indexOf(idB); case 'default': default: return itemA.name.localeCompare(itemB.name); } });
+            if (sort === 'favcommon' || sort === 'favorite') { inventoryItemIds = inventoryItemIds.filter(id => favorites.includes(id)); }
+            inventoryListDiv.className = isInventoryEditMode ? 'inventory-list-view space-y-1' : 'inventory-icon-view grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2';
+            inventoryViewModeIndicator.textContent = isInventoryEditMode ? '列表' : '图标';
+            inventoryItemIds.forEach(itemId => { const count = playerInventory.get(itemId); const item = allItems.find(i => i.id === itemId); if (!item) return; const itemWrapper = document.createElement('div'); itemWrapper.classList.add('item-wrapper', 'base-item'); const itemContent = document.createElement('div'); itemContent.classList.add('item-content', 'tooltip'); itemContent.textContent = `${item.name} (x${count})`; itemContent.draggable = true; itemContent.dataset.itemId = item.id; const tooltipText = document.createElement('span'); tooltipText.classList.add('tooltiptext'); tooltipText.innerHTML = `<strong>${item.description || '无描述'}</strong>`; if (item.tags && item.tags.length > 0) { tooltipText.innerHTML += '<hr>'; item.tags.forEach(tag => { const tagSpan = document.createElement('span'); tagSpan.classList.add('tag'); tagSpan.textContent = tag; tooltipText.appendChild(tagSpan); }); } itemContent.appendChild(tooltipText); itemWrapper.appendChild(itemContent); if (favorites.includes(itemId)) { const favIndicator = document.createElement('span'); favIndicator.textContent = '❤️'; favIndicator.classList.add('favorite-indicator'); itemWrapper.appendChild(favIndicator); } if (isInventoryEditMode) { itemWrapper.classList.add('inventory-list-view'); const buttonGroup = document.createElement('div'); buttonGroup.classList.add('button-group'); const deleteButton = document.createElement('button'); deleteButton.textContent = '🗑️'; deleteButton.classList.add('btn-sm', 'bg-red-400', 'hover:bg-red-500', 'text-red-800', 'rounded'); deleteButton.title = '从库存删除 (单个)'; deleteButton.dataset.itemId = item.id; deleteButton.addEventListener('click', () => { if (confirm(`确定要从库存中删除一个 "${item.name}" 吗？`)) { removeFromInventory(item.id, 1); } }); buttonGroup.appendChild(deleteButton); itemWrapper.appendChild(buttonGroup); } else { itemWrapper.classList.add('inventory-icon-view'); } inventoryListDiv.appendChild(itemWrapper); });
+            inventoryListDiv.querySelectorAll('.item-content').forEach(itemDiv => { itemDiv.addEventListener('dragstart', (event) => { if (event.target.classList.contains('item-content')) { const dragItemId = event.target.dataset.itemId; if (playerInventory.has(dragItemId) && playerInventory.get(dragItemId) > 0) { event.dataTransfer.setData('text/plain', dragItemId); event.dataTransfer.effectAllowed = 'copy'; setTimeout(() => event.target.closest('.item-wrapper').classList.add('opacity-50'), 0); } else { event.preventDefault(); console.warn("拖拽库存为 0"); } } }); itemDiv.addEventListener('dragend', (event) => { if (event.target.classList.contains('item-content')) { event.target.closest('.item-wrapper').classList.remove('opacity-50'); } }); itemDiv.addEventListener('click', handleInventoryItemClick); });
+        }
+        function renderAllItemsList(filter = '', sort = 'default', tagsFilter = new Set()) {
+            allItemsListDiv.innerHTML = '';
+            const lowerCaseFilter = filter.toLowerCase();
+            let filteredAndSortedItems = [...allItems];
+            if (tagsFilter.size > 0) { filteredAndSortedItems = filteredAndSortedItems.filter(item => { if (!item || !item.tags) return false; return Array.from(tagsFilter).every(requiredTag => item.tags.includes(requiredTag)); }); }
+            filteredAndSortedItems = filteredAndSortedItems.filter(item => item.name.toLowerCase().includes(lowerCaseFilter));
+            filteredAndSortedItems.sort((itemA, itemB) => { const idA = itemA.id; const idB = itemB.id; const isAFav = favorites.includes(idA); const isBFav = favorites.includes(idB); const usageA = commonUsage.get(idA) || 0; const usageB = commonUsage.get(idB) || 0; switch (sort) { case 'favorite': if (isAFav && !isBFav) return -1; if (!isAFav && isBFav) return 1; if (isAFav && isBFav) return favorites.indexOf(idA) - favorites.indexOf(idB); return itemA.name.localeCompare(itemB.name); case 'common': if (usageA !== usageB) return usageB - usageA; return itemA.name.localeCompare(itemB.name); case 'favcommon': if (!isAFav) return 1; if (!isBFav) return -1; if (usageA !== usageB) return usageB - usageA; return favorites.indexOf(idA) - favorites.indexOf(idB); case 'default': default: return itemA.name.localeCompare(itemB.name); } });
+            if (sort === 'favcommon' || sort === 'favorite') { filteredAndSortedItems = filteredAndSortedItems.filter(item => favorites.includes(item.id)); }
+            allItemsListDiv.className = isAllItemsEditMode ? 'all-items-list-view space-y-1' : 'all-items-icon-view grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2';
+            allItemsViewModeIndicator.textContent = isAllItemsEditMode ? '列表' : '图标';
+            filteredAndSortedItems.forEach(item => { const itemWrapper = document.createElement('div'); itemWrapper.classList.add('item-wrapper', 'base-item'); const itemContent = document.createElement('div'); itemContent.classList.add('item-content', 'tooltip'); itemContent.textContent = item.name; itemContent.dataset.itemId = item.id; const tooltipText = document.createElement('span'); tooltipText.classList.add('tooltiptext'); tooltipText.innerHTML = `<strong>${item.description || '无描述'}</strong>`; if (item.tags && item.tags.length > 0) { tooltipText.innerHTML += '<hr>'; item.tags.forEach(tag => { const tagSpan = document.createElement('span'); tagSpan.classList.add('tag'); tagSpan.textContent = tag; tooltipText.appendChild(tagSpan); }); } itemContent.appendChild(tooltipText); itemWrapper.appendChild(itemContent); if (isAllItemsEditMode) { itemWrapper.classList.add('all-items-list-view'); const buttonGroup = document.createElement('div'); buttonGroup.classList.add('button-group'); const favoriteButton = document.createElement('button'); favoriteButton.innerHTML = favorites.includes(item.id) ? '❤️' : '🤍'; favoriteButton.classList.add('btn-sm', 'favorite-btn'); if (favorites.includes(item.id)) favoriteButton.classList.add('favorited'); favoriteButton.title = favorites.includes(item.id) ? '取消收藏' : '收藏物品'; favoriteButton.dataset.itemId = item.id; favoriteButton.addEventListener('click', () => toggleFavorite(item.id)); const addButton = document.createElement('button'); addButton.textContent = '＋'; addButton.classList.add('btn-sm', 'bg-green-400', 'hover:bg-green-500', 'text-green-800', 'rounded'); addButton.title = '添加到库存 (+1)'; addButton.dataset.itemId = item.id; addButton.addEventListener('click', handleAddBaseItemToInventory); const editButton = document.createElement('button'); editButton.textContent = '✏️'; editButton.classList.add('btn-sm', 'bg-yellow-400', 'hover:bg-yellow-500', 'text-yellow-800', 'rounded'); editButton.title = '编辑基础物品'; editButton.dataset.itemId = item.id; editButton.addEventListener('click', handleEditBaseItem); const deleteButton = document.createElement('button'); deleteButton.textContent = '🗑️'; deleteButton.classList.add('btn-sm', 'bg-red-400', 'hover:bg-red-500', 'text-red-800', 'rounded'); deleteButton.title = '删除基础物品 (危险!)'; deleteButton.dataset.itemId = item.id; deleteButton.addEventListener('click', handleDeleteBaseItem); buttonGroup.appendChild(favoriteButton); buttonGroup.appendChild(addButton); buttonGroup.appendChild(editButton); buttonGroup.appendChild(deleteButton); itemWrapper.appendChild(buttonGroup); } else { itemWrapper.classList.add('all-items-icon-view'); if (favorites.includes(item.id)) { const favIndicator = document.createElement('span'); favIndicator.textContent = '❤️'; favIndicator.classList.add('favorite-indicator'); itemWrapper.appendChild(favIndicator); } } allItemsListDiv.appendChild(itemWrapper); });
+        }
+        function renderFilteredFormulaList() {
+            formulaListDiv.innerHTML = '';
+            formulaPlaceholder.style.display = 'none';
+
+            const synthesisItemElements = synthesisAreaDiv.querySelectorAll('.synthesis-item');
+            const synthesisItemNames = new Set(
+                Array.from(synthesisItemElements)
+                     .map(el => allItems.find(item => item.id === el.dataset.itemId)?.name)
+                     .filter(Boolean)
+            );
+
+            if (synthesisItemNames.size === 0) {
+                renderFormulaList();
+                return;
+            }
+
+            const relevantFormulas = [];
+            allFormulas.forEach((formulaData, formulaKey) => {
+                let inputs;
+                try { inputs = JSON.parse(formulaKey); } catch (e) { return; }
+                const formulaInputNames = new Set(inputs.map(([name, count]) => name));
+                let isRelevant = true;
+                for (const synthesisName of synthesisItemNames) {
+                    if (!formulaInputNames.has(synthesisName)) {
+                        isRelevant = false;
+                        break;
+                    }
+                }
+                if (isRelevant) {
+                    relevantFormulas.push({ key: formulaKey, data: formulaData });
+                }
+            });
+
+            if (relevantFormulas.length > 0) {
+                relevantFormulas.forEach(({ key: formulaKey, data: formulaData }) => {
+                    const formulaWrapper = document.createElement('div');
+                    formulaWrapper.classList.add('flex', 'items-center', 'justify-between', 'p-2', 'bg-gray-50', 'rounded', 'text-sm', 'text-gray-600');
+                    const formulaContent = document.createElement('div');
+                    let inputs, inputsStr = "错误 Key";
+                    try { inputs = JSON.parse(formulaKey); inputsStr = formatFormulaKeyForDisplay(formulaKey); } catch (e) { console.error("渲染公式 Key 解析失败:", formulaKey, e); }
+                    const consumedSet = new Set(formulaData.consumedInputs || []);
+                    const nonConsumedInputsMap = new Map();
+                    if (inputs) { inputs.forEach(([name, count]) => { if (!consumedSet.has(name)) { nonConsumedInputsMap.set(name, count); } }); }
+                    const outputsStr = formulaData.outputs.map(out => { const probStr = (out.probability !== undefined && out.probability < 100) ? ` (${out.probability}%)` : ''; return `${out.name}${probStr}`; }).join(' + ');
+                    const nonConsumedStr = Array.from(nonConsumedInputsMap.entries()).map(([name, count]) => { return count > 1 ? `${name} (x${count})` : name; }).join(' + ');
+                    let finalOutputsStr = outputsStr;
+                    if (nonConsumedStr) { finalOutputsStr += (finalOutputsStr ? ' + ' : '') + nonConsumedStr; }
+                    if (!finalOutputsStr) { finalOutputsStr = "[无产物]"; }
+                    const mainFormulaText = document.createElement('div');
+                    mainFormulaText.textContent = `${inputsStr} -> ${finalOutputsStr}`;
+                    formulaContent.appendChild(mainFormulaText);
+                    if (formulaData.consumedInputs && formulaData.consumedInputs.length > 0) { const consumedText = document.createElement('div'); consumedText.textContent = `消耗: ${formulaData.consumedInputs.join(', ')}`; consumedText.classList.add('text-xs', 'text-gray-500', 'italic', 'pl-2'); formulaContent.appendChild(consumedText); }
+                    const tooltip = document.createElement('div');
+                    tooltip.classList.add('tooltip', 'inline-block', 'ml-1');
+                    tooltip.textContent = 'ℹ️';
+                    const tooltipText = document.createElement('span');
+                    tooltipText.classList.add('tooltiptext');
+                    tooltipText.textContent = formulaData.outputs[0]?.description || (nonConsumedInputsMap.size > 0 ? '包含未消耗的输入物' : '无产物描述');
+                    tooltip.appendChild(tooltipText);
+                    mainFormulaText.appendChild(tooltip);
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = '🗑️';
+                    deleteButton.classList.add('btn-sm', 'bg-red-300', 'hover:bg-red-400', 'text-red-700', 'rounded', 'flex-shrink-0');
+                    deleteButton.title = '删除公式';
+                    deleteButton.dataset.formulaKey = formulaKey;
+                    deleteButton.addEventListener('click', handleDeleteFormula);
+                    formulaWrapper.appendChild(formulaContent);
+                    formulaWrapper.appendChild(deleteButton);
+                    formulaListDiv.appendChild(formulaWrapper);
+                });
+            } else {
+                formulaPlaceholder.textContent = "没有找到同时包含所有合成区物品的公式。";
+                formulaPlaceholder.style.display = 'block';
+            }
+        }
+        function renderFormulaList() {
+            formulaListDiv.innerHTML = '';
+            formulaPlaceholder.style.display = allFormulas.size === 0 ? 'block' : 'none';
+            formulaPlaceholder.textContent = "暂无任何已知公式。";
+
+            allFormulas.forEach((formulaData, formulaKey) => {
+                const formulaWrapper = document.createElement('div');
+                formulaWrapper.classList.add('flex', 'items-center', 'justify-between', 'p-2', 'bg-gray-50', 'rounded', 'text-sm', 'text-gray-600');
+                const formulaContent = document.createElement('div');
+                let inputs, inputsStr = "错误 Key";
+                try { inputs = JSON.parse(formulaKey); inputsStr = formatFormulaKeyForDisplay(formulaKey); } catch (e) { console.error("渲染公式 Key 解析失败:", formulaKey, e); }
+                const consumedSet = new Set(formulaData.consumedInputs || []);
+                const nonConsumedInputsMap = new Map();
+                if (inputs) { inputs.forEach(([name, count]) => { if (!consumedSet.has(name)) { nonConsumedInputsMap.set(name, count); } }); }
+                const outputsStr = formulaData.outputs.map(out => { const probStr = (out.probability !== undefined && out.probability < 100) ? ` (${out.probability}%)` : ''; return `${out.name}${probStr}`; }).join(' + ');
+                const nonConsumedStr = Array.from(nonConsumedInputsMap.entries()).map(([name, count]) => { return count > 1 ? `${name} (x${count})` : name; }).join(' + ');
+                let finalOutputsStr = outputsStr;
+                if (nonConsumedStr) { finalOutputsStr += (finalOutputsStr ? ' + ' : '') + nonConsumedStr; }
+                if (!finalOutputsStr) { finalOutputsStr = "[无产物]"; }
+                const mainFormulaText = document.createElement('div');
+                mainFormulaText.textContent = `${inputsStr} -> ${finalOutputsStr}`;
+                formulaContent.appendChild(mainFormulaText);
+                if (formulaData.consumedInputs && formulaData.consumedInputs.length > 0) { const consumedText = document.createElement('div'); consumedText.textContent = `消耗: ${formulaData.consumedInputs.join(', ')}`; consumedText.classList.add('text-xs', 'text-gray-500', 'italic', 'pl-2'); formulaContent.appendChild(consumedText); }
+                const tooltip = document.createElement('div');
+                tooltip.classList.add('tooltip', 'inline-block', 'ml-1');
+                tooltip.textContent = 'ℹ️';
+                const tooltipText = document.createElement('span');
+                tooltipText.classList.add('tooltiptext');
+                tooltipText.textContent = formulaData.outputs[0]?.description || (nonConsumedInputsMap.size > 0 ? '包含未消耗的输入物' : '无产物描述');
+                tooltip.appendChild(tooltipText);
+                mainFormulaText.appendChild(tooltip);
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '🗑️';
+                deleteButton.classList.add('btn-sm', 'bg-red-300', 'hover:bg-red-400', 'text-red-700', 'rounded', 'flex-shrink-0');
+                deleteButton.title = '删除公式';
+                deleteButton.dataset.formulaKey = formulaKey;
+                deleteButton.addEventListener('click', handleDeleteFormula);
+                formulaWrapper.appendChild(formulaContent);
+                formulaWrapper.appendChild(deleteButton);
+                formulaListDiv.appendChild(formulaWrapper);
+            });
+        }
+        function openItemModal(mode = 'add', itemToEdit = null) {
+            itemModalForm.reset();
+            modalTagSelectionDiv.innerHTML = '';
+            const currentTags = new Set(itemToEdit?.tags || []);
+
+            if (mode === 'edit' && itemToEdit) {
+                modalTitle.textContent = '编辑物品';
+                modalItemIdInput.value = itemToEdit.id;
+                modalItemNameInput.value = itemToEdit.name;
+                modalItemDescInput.value = itemToEdit.description;
+            } else {
+                modalTitle.textContent = '添加新物品';
+                modalItemIdInput.value = '';
+            }
+
+            for (const category in tagCategories) {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.classList.add('modal-tag-category');
+                const categoryLabel = document.createElement('label');
+                categoryLabel.classList.add('block', 'text-sm', 'font-medium', 'text-gray-700', 'mb-1');
+                categoryLabel.textContent = category + ':';
+                categoryDiv.appendChild(categoryLabel);
+
+                const checkboxGroup = document.createElement('div');
+                checkboxGroup.classList.add('modal-tag-checkbox-group');
+
+                tagCategories[category].forEach(subCategory => {
+                    const tagString = `${category}:${subCategory}`;
+                    const checkboxId = `modal-tag-${tagString.replace(/[:\s]/g, '-')}`;
+                    const label = document.createElement('label');
+                    label.htmlFor = checkboxId;
+                    label.classList.add('inline-flex', 'items-center', 'mr-4');
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = checkboxId;
+                    checkbox.name = 'tags';
+                    checkbox.value = tagString;
+                    checkbox.classList.add('form-checkbox', 'h-4', 'w-4', 'text-blue-600');
+                    if (currentTags.has(tagString)) {
+                        checkbox.checked = true;
+                    }
+
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(` ${subCategory}`));
+                    checkboxGroup.appendChild(label);
+                });
+                categoryDiv.appendChild(checkboxGroup);
+                modalTagSelectionDiv.appendChild(categoryDiv);
+            }
+
+            itemModal.style.display = 'flex';
+        }
+        function closeItemModal() { itemModal.style.display = 'none'; }
+        function handleModalSave(event) {
+            event.preventDefault();
+            const itemId = modalItemIdInput.value;
+            const name = modalItemNameInput.value;
+            const description = modalItemDescInput.value;
+            const selectedTags = Array.from(itemModalForm.querySelectorAll('input[name="tags"]:checked')).map(checkbox => checkbox.value);
+
+            if (itemId) {
+                const itemIndex = allItems.findIndex(i => i.id === itemId);
+                if (itemIndex > -1) {
+                    const oldName = allItems[itemIndex].name;
+                    const trimmedNewName = name.trim();
+                    if (trimmedNewName !== oldName && allItems.some((item, index) => index !== itemIndex && item.name === trimmedNewName)) {
+                        alert(`物品名称 "${trimmedNewName}" 已被其他物品使用！`);
+                        return;
+                    }
+                    if (!trimmedNewName) { alert('物品名称不能为空！'); return; }
+
+                    allItems[itemIndex].name = trimmedNewName;
+                    allItems[itemIndex].description = description.trim();
+                    allItems[itemIndex].tags = selectedTags;
+
+                    if (oldName !== trimmedNewName) {
+                        console.log(`物品名称改变: ${oldName} -> ${trimmedNewName}. 开始更新公式...`);
+                        const updatedFormulas = new Map();
+                        allFormulas.forEach((formulaData, oldKey) => {
+                            let keyChanged = false;
+                            let currentEntries;
+                            try { currentEntries = JSON.parse(oldKey); } catch (e) { updatedFormulas.set(oldKey, formulaData); return; }
+                            const newEntries = currentEntries.map(([n, count]) => { if (n === oldName) { keyChanged = true; return [trimmedNewName, count]; } return [n, count]; });
+                            formulaData.outputs.forEach(output => { if (output.name === oldName) { output.name = trimmedNewName; } });
+                            if (formulaData.consumedInputs) { formulaData.consumedInputs = formulaData.consumedInputs.map(n => n === oldName ? trimmedNewName : n); }
+                            if (keyChanged) { newEntries.sort((a, b) => a[0].localeCompare(b[0])); const newKey = JSON.stringify(newEntries); updatedFormulas.set(newKey, formulaData); } else { updatedFormulas.set(oldKey, formulaData); }
+                        });
+                        allFormulas = updatedFormulas;
+                        renderFilteredFormulaList();
+                    }
+                    console.log("物品已更新:", allItems[itemIndex]);
+                    renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags);
+                    renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags);
+                } else {
+                    console.error("编辑失败，未找到物品 ID:", itemId);
+                    alert("编辑失败，未找到物品！");
+                }
+            } else {
+                if (!addNewBaseItem(name, description, selectedTags)) {
+                    return;
+                }
+            }
+            closeItemModal();
+        }
+
+        toggleInventoryManagerButton.addEventListener('click', () => { isInventoryManagerVisible = !isInventoryManagerVisible; if (isInventoryManagerVisible) { inventorySection.classList.add('collapsible-hidden'); inventorySection.classList.remove('collapsible-visible'); managerSection.classList.remove('collapsible-hidden'); managerSection.classList.add('collapsible-visible'); toggleInventoryManagerButton.textContent = '返回玩家库存'; renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); } else { managerSection.classList.add('collapsible-hidden'); managerSection.classList.remove('collapsible-visible'); inventorySection.classList.remove('collapsible-hidden'); inventorySection.classList.add('collapsible-visible'); toggleInventoryManagerButton.textContent = '查看物品管理'; renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); } });
+        toggleInventoryViewButton.addEventListener('click', () => { isInventoryEditMode = !isInventoryEditMode; renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); });
+        filterInventoryInput.addEventListener('input', (event) => { renderPlayerInventory(event.target.value, currentInventorySort, selectedInventoryTags); });
+        inventorySortSelect.addEventListener('change', (event) => { currentInventorySort = event.target.value; renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); });
+        toggleAllItemsViewButton.addEventListener('click', () => { isAllItemsEditMode = !isAllItemsEditMode; renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); });
+        filterAllItemsInput.addEventListener('input', (event) => { renderAllItemsList(event.target.value, currentAllItemsSort, selectedAllItemsTags); });
+        allItemsSortSelect.addEventListener('change', (event) => { currentAllItemsSort = event.target.value; renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); });
+        openAddItemModalButton.addEventListener('click', () => openItemModal('add'));
+        modalCloseButton.addEventListener('click', closeItemModal);
+        modalCancelButton.addEventListener('click', closeItemModal);
+        itemModalForm.addEventListener('submit', handleModalSave);
+        itemModal.addEventListener('click', (event) => { if (event.target === itemModal) { closeItemModal(); } });
+        apiKeyInput.addEventListener('input', (event) => { DASHSCOPE_API_KEY = event.target.value; console.log('API Key 已更新'); });
+        synthesisAreaDiv.addEventListener('dragover', (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; synthesisAreaDiv.classList.add('drag-over'); });
+        synthesisAreaDiv.addEventListener('dragleave', () => { synthesisAreaDiv.classList.remove('drag-over'); });
+        synthesisAreaDiv.addEventListener('drop', (event) => { event.preventDefault(); synthesisAreaDiv.classList.remove('drag-over'); const itemId = event.dataTransfer.getData('text/plain'); addItemToSynthesisArea(itemId); });
+        synthesizeButton.addEventListener('click', async () => { const inputItemElements = synthesisAreaDiv.querySelectorAll('.synthesis-item'); if (inputItemElements.length < 1) { showTemporaryMessage(synthesisResultDiv, '请放入物品！', 'text-red-500'); return; } const inputItemIds = Array.from(inputItemElements).map(el => el.dataset.itemId); const inputItems = inputItemIds.map(id => allItems.find(item => item.id === id)).filter(Boolean); const inputItemNames = inputItems.map(item => item.name); if (inputItems.length !== inputItemIds.length) { showTemporaryMessage(synthesisResultDiv, '合成区含无效物品！', 'text-red-500'); return; } const formulaKey = generateFormulaKey(inputItemNames); const suggestion = synthesisSuggestionInput.value.trim(); synthesisResultDiv.textContent = ''; synthesisResultDiv.className = 'text-center font-medium text-gray-700 h-6 mb-2'; if (!formulaKey) { showTemporaryMessage(synthesisResultDiv, '无法生成 Key！', 'text-red-500'); return; } if (!checkInventoryHasItems(formulaKey)) { showTemporaryMessage(synthesisResultDiv, '库存不足！', 'text-red-500'); return; } let formulaData = null; let synthesisSource = ''; if (allFormulas.has(formulaKey)) { formulaData = allFormulas.get(formulaKey); synthesisSource = 'local'; console.log('找到本地公式'); } else { console.log('调用 AI...'); const aiResult = await callAIForFormula(inputItems, suggestion); if (aiResult && !aiResult.error) { formulaData = aiResult; synthesisSource = 'ai'; if (!addFormula(inputItemNames, formulaData)) { console.warn("AI 公式添加失败"); } console.log('AI 生成公式'); } else { return; } } if (formulaData && formulaData.outputs && formulaData.consumedInputs) { consumeItemsFromInventory(formulaKey, formulaData.consumedInputs); const producedItemIds = rollProbability(formulaData.outputs); const producedItemCounts = {}; producedItemIds.forEach(id => { addToInventory(id, 1); const item = allItems.find(i=>i.id===id); if(item) producedItemCounts[item.name] = (producedItemCounts[item.name] || 0) + 1; }); const involvedItemIds = new Set(); inputItems.forEach(item => involvedItemIds.add(item.id)); producedItemIds.forEach(id => involvedItemIds.add(id)); incrementUsageCount(Array.from(involvedItemIds)); let resultMessage = `${synthesisSource === 'local' ? '合成' : 'AI 合成'}成功! `; if (Object.keys(producedItemCounts).length > 0) { resultMessage += `获得: ${Object.entries(producedItemCounts).map(([name, count]) => `${name}${count > 1 ? `(x${count})` : ''}`).join(', ')}`; } else { resultMessage += "但未产生任何物品。"; } showTemporaryMessage(synthesisResultDiv, resultMessage, 'text-green-500', 5000); synthesisAreaDiv.innerHTML = ''; synthesisSuggestionInput.value = ''; renderFilteredFormulaList(); } else { showTemporaryMessage(synthesisResultDiv, '合成失败: 无效公式数据。', 'text-red-500'); console.error("无效 formulaData:", formulaData); } });
+        exportButton.addEventListener('click', () => { const dataToExport = { apiKey: DASHSCOPE_API_KEY, items: allItems, inventory: Array.from(playerInventory.entries()), formulas: Array.from(allFormulas.entries()), favorites: favorites, commonUsage: Array.from(commonUsage.entries()) }; if (DASHSCOPE_API_KEY && DASHSCOPE_API_KEY !== 'xxxxxx') { console.warn("导出文件将包含 API Key!"); } const dataStr = JSON.stringify(dataToExport, null, 2); const dataBlob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(dataBlob); const link = document.createElement('a'); link.href = url; link.download = 'element_game_data_v6.json'; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); console.log('数据已导出 (v6)'); showTemporaryMessage(synthesisResultDiv, '数据已导出!', 'text-blue-500'); });
+        importButton.addEventListener('click', () => { importFileInput.click(); });
+        importFileInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const importedData = JSON.parse(e.target.result); if (importedData.apiKey !== undefined && importedData.items && Array.isArray(importedData.items) && importedData.inventory && Array.isArray(importedData.inventory) && importedData.formulas && Array.isArray(importedData.formulas) && importedData.favorites && Array.isArray(importedData.favorites) && importedData.commonUsage && Array.isArray(importedData.commonUsage)) { const isValidFormulas = importedData.formulas.every(entry => Array.isArray(entry) && entry.length === 2 && typeof entry[0] === 'string' && typeof entry[1] === 'object' && entry[1].outputs && entry[1].consumedInputs); const isValidInventory = importedData.inventory.every(entry => Array.isArray(entry) && entry.length === 2 && typeof entry[0] === 'string' && typeof entry[1] === 'number'); const isValidFavorites = importedData.favorites.every(id => typeof id === 'string'); const isValidCommonUsage = importedData.commonUsage.every(entry => Array.isArray(entry) && entry.length === 2 && typeof entry[0] === 'string' && typeof entry[1] === 'number'); if (isValidFormulas && isValidInventory && isValidFavorites && isValidCommonUsage) { allItems = importedData.items; playerInventory = new Map(importedData.inventory); allFormulas = new Map(importedData.formulas); favorites = importedData.favorites; commonUsage = new Map(importedData.commonUsage); DASHSCOPE_API_KEY = importedData.apiKey; apiKeyInput.value = DASHSCOPE_API_KEY; synthesisAreaDiv.innerHTML = ''; synthesisSuggestionInput.value = ''; isInventoryManagerVisible = false; isInventoryEditMode = false; isAllItemsEditMode = false; currentInventorySort = 'default'; currentAllItemsSort = 'default'; selectedInventoryTags = new Set(); selectedAllItemsTags = new Set(); inventorySection.classList.remove('collapsible-hidden'); inventorySection.classList.add('collapsible-visible'); managerSection.classList.add('collapsible-hidden'); managerSection.classList.remove('collapsible-visible'); toggleInventoryManagerButton.textContent = '查看物品管理'; openAddItemModalButton.textContent = '＋ 添加物品'; inventorySortSelect.value = 'default'; allItemsSortSelect.value = 'default'; initializeTagFilters(); renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags); renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags); renderFilteredFormulaList(); renderSynthesisArea(); showTemporaryMessage(synthesisResultDiv, '数据导入成功！', 'text-green-500'); console.log('数据已导入 (v6)'); } else { throw new Error('导入数据格式不正确。'); } } else { throw new Error('导入文件缺少 v6 字段。'); } } catch (error) { console.error('导入失败:', error); alert(`导入失败: ${error.message}`); showTemporaryMessage(synthesisResultDiv, `导入失败: ${error.message}`, 'text-red-500'); } finally { importFileInput.value = ''; } }; reader.onerror = (e) => { console.error('读取文件失败:', e); alert('读取文件失败!'); showTemporaryMessage(synthesisResultDiv, '读取文件失败!', 'text-red-500'); }; reader.readAsText(file); });
+        function showTemporaryMessage(element, message, className = 'text-blue-500', duration = 2000) { const originalClasses = element.className; element.textContent = message; element.className = `${originalClasses.replace(/text-(red|green|yellow|blue)-[0-9]+/g, '')} ${className}`; setTimeout(() => { element.textContent = ''; element.className = originalClasses; }, duration); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM 已加载，开始初始化 Demo v6.3...');
+            inventorySection.classList.add('collapsible-visible');
+            managerSection.classList.add('collapsible-hidden');
+            initializeTagFilters();
+            renderPlayerInventory(filterInventoryInput.value, currentInventorySort, selectedInventoryTags);
+            renderAllItemsList(filterAllItemsInput.value, currentAllItemsSort, selectedAllItemsTags);
+            renderFilteredFormulaList();
+            renderSynthesisArea();
+            console.log('Demo v6.3 初始化完成');
+        });
+    </script>
+</body>
+</html>

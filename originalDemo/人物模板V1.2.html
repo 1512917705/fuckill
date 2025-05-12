@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人物模块 Demo v1.2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        .character-sheet {
+            max-width: 800px;
+            margin: 2rem auto;
+            background-color: white;
+            padding: 1.5rem; /* p-6 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+        }
+        .section-title {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 1rem; /* mb-4 */
+            border-bottom: 1px solid #e5e7eb; /* border-gray-200 */
+            padding-bottom: 0.5rem; /* pb-2 */
+        }
+        .attribute-grid, .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Increased min-width slightly */
+            gap: 1rem; /* gap-4 */
+            margin-bottom: 1.5rem; /* mb-6 */
+        }
+         .attribute-item, .resource-item {
+            background-color: #f9fafb; /* gray-50 */
+            padding: 0.75rem; /* p-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+        }
+        .attribute-item label, .resource-item label {
+            display: block;
+            font-weight: 500; /* font-medium */
+            margin-bottom: 0.25rem; /* mb-1 */
+            color: #4b5563; /* gray-600 */
+            font-size: 0.875rem; /* text-sm */
+        }
+         .attribute-details span, .resource-details span {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 600; /* font-semibold */
+            color: #1f2937; /* gray-800 */
+            margin-right: 0.5rem;
+        }
+        .attribute-details .source-details {
+            font-size: 0.75rem; /* text-xs */
+            color: #6b7280; /* gray-500 */
+            margin-top: 0.25rem;
+        }
+         .proficiency-display {
+            font-size: 0.8rem;
+            color: #3b82f6; /* blue-600 */
+            margin-left: 0.5rem;
+            display: block; /* Make proficiency display on a new line */
+            margin-top: 0.2rem;
+         }
+         .proficiency-bar { /* Optional: Visual bar for proficiency */
+            background-color: #e5e7eb; /* gray-200 */
+            border-radius: 9999px; /* rounded-full */
+            height: 6px;
+            margin-top: 4px;
+            overflow: hidden;
+         }
+         .proficiency-bar-inner {
+            background-color: #60a5fa; /* blue-400 */
+            height: 100%;
+            width: 0%; /* Will be set by JS */
+            transition: width 0.3s ease;
+         }
+        .resource-controls button {
+            background-color: #d1d5db; /* gray-300 */
+            border: none;
+            color: #374151; /* gray-700 */
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.25rem; /* rounded-sm */
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 0.25rem; /* ml-1 */
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+        .resource-controls button:hover {
+            background-color: #9ca3af; /* gray-400 */
+        }
+        .list-section ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 0.5rem; /* Add some space above lists */
+        }
+        .list-section li {
+            background-color: #f9fafb; /* gray-50 */
+            padding: 0.5rem 0.75rem; /* p-2 p-3 */
+            margin-bottom: 0.5rem; /* mb-2 */
+            border-radius: 0.375rem; /* rounded-md */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .list-section .delete-btn {
+            background-color: #fecaca; /* red-200 */
+            color: #b91c1c; /* red-700 */
+            border: none;
+            padding: 0.1rem 0.4rem;
+            border-radius: 9999px; /* rounded-full */
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+         .list-section .delete-btn:hover {
+             background-color: #fca5a5; /* red-300 */
+         }
+        .add-item-form select, .add-item-form input {
+            padding: 0.4rem;
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            margin-right: 0.5rem; /* mr-2 */
+            font-size: 0.9rem;
+            min-width: 100px; /* Ensure select has some width */
+        }
+        .add-item-form button {
+             background-color: #60a5fa; /* blue-400 */
+             color: white;
+             border: none;
+             padding: 0.4rem 0.8rem;
+             border-radius: 0.375rem; /* rounded-md */
+             cursor: pointer;
+             font-size: 0.9rem;
+             transition: background-color 0.2s;
+        }
+         .add-item-form button:hover {
+             background-color: #3b82f6; /* blue-600 */
+         }
+        .alignment-display {
+            background-color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 1.5rem;
+        }
+        .alignment-display .axis {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+         .alignment-display label {
+             width: 80px; /* 固定标签宽度 */
+             font-weight: 500;
+             color: #4b5563;
+             font-size: 0.875rem;
+         }
+         .alignment-display input[type="range"] {
+             flex-grow: 1;
+             margin: 0 0.5rem;
+         }
+         .alignment-display .value {
+             min-width: 30px; /* 固定数值宽度 */
+             text-align: right;
+             font-weight: 600;
+         }
+         .alignment-display .result {
+             margin-top: 0.75rem;
+             font-weight: 600;
+             text-align: center;
+             font-size: 1.1rem;
+             color: #1f2937;
+         }
+         /* Difficulty Selector Style */
+        .difficulty-selector {
+            margin-bottom: 1rem; /* mb-4 */
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* gap-2 */
+        }
+        .difficulty-selector label {
+            font-weight: 500; /* font-medium */
+            color: #4b5563; /* gray-600 */
+            font-size: 0.9rem;
+        }
+        textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            min-height: 80px;
+            font-size: 0.9rem;
+        }
+        select {
+             padding: 0.5rem;
+             border: 1px solid #d1d5db;
+             border-radius: 0.375rem;
+             font-size: 0.9rem;
+             background-color: white;
+        }
+        /* 简单的装备栏位样式 */
+        .equipment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .equipment-slot {
+             background-color: #f9fafb;
+             padding: 0.75rem;
+             border-radius: 0.375rem;
+             border: 1px solid #e5e7eb;
+             text-align: center;
+        }
+         .equipment-slot label {
+             display: block;
+             font-weight: 500;
+             margin-bottom: 0.5rem;
+             color: #4b5563;
+             font-size: 0.875rem;
+         }
+         .equipment-slot .item-name {
+             font-weight: 600;
+             color: #1f2937;
+             min-height: 1.5em; /* 保持高度一致 */
+             display: block; /* 确保占位 */
+             font-size: 0.9rem;
+         }
+    </style>
+</head>
+<body>
+
+    <div class="character-sheet">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">人物面板 v1.2</h1>
+
+        <section>
+            <h2 class="section-title">核心属性</h2>
+            <div class="difficulty-selector">
+                <label for="difficulty-select">游戏难度:</label>
+                <select id="difficulty-select">
+                    <option value="0.5">简单</option>
+                    <option value="1.0" selected>普通</option>
+                    <option value="2.0">困难</option>
+                    <option value="5.0">疯狂</option>
+                </select>
+                <span class="text-sm text-gray-600">
+                    (熟练度阈值 = 100 * 难度系数 * 1.2 ^ 基础属性值)
+                </span>
+            </div>
+            <div id="attributes" class="attribute-grid">
+                </div>
+        </section>
+
+        <section>
+            <h2 class="section-title">数值资源</h2>
+            <div id="resources" class="resource-grid">
+                </div>
+        </section>
+
+        <section>
+            <h2 class="section-title">阵营</h2>
+            <div id="alignment" class="alignment-display">
+                <div class="axis">
+                    <label for="ethics-axis">善良/邪恶:</label>
+                    <input type="range" id="ethics-axis" min="-100" max="100" value="0" step="1">
+                    <span class="value" id="ethics-value">0</span>
+                </div>
+                <div class="axis">
+                    <label for="order-axis">守序/混乱:</label>
+                    <input type="range" id="order-axis" min="-100" max="100" value="0" step="1">
+                    <span class="value" id="order-value">0</span>
+                </div>
+                <div class="result" id="alignment-result">中立</div> </div>
+        </section>
+
+        <section class="list-section">
+            <h2 class="section-title">性格</h2>
+            <ul id="personality-list">
+                </ul>
+            <div class="add-item-form mt-4">
+                <select id="personality-select">
+                    </select>
+                <button id="add-personality-btn">添加性格</button>
+            </div>
+        </section>
+
+        <section class="list-section mt-6">
+            <h2 class="section-title">身份</h2>
+             <ul id="identity-list">
+                </ul>
+            <div class="add-item-form mt-4">
+                 <select id="identity-select">
+                    </select>
+                <button id="add-identity-btn">添加身份</button>
+            </div>
+        </section>
+
+        <section class="list-section mt-6">
+            <h2 class="section-title">状态效果</h2>
+            <h3 class="text-md font-medium text-gray-600 mb-2">永久状态:</h3>
+            <ul id="permanent-status-list">
+                </ul>
+            <h3 class="text-md font-medium text-gray-600 mt-4 mb-2">临时状态:</h3>
+            <ul id="temporary-status-list">
+                </ul>
+             <div class="add-item-form mt-4">
+                <select id="status-select">
+                    </select>
+                <select id="status-type-select">
+                    <option value="temporary">临时</option>
+                    <option value="permanent">永久</option>
+                </select>
+                <button id="add-status-btn">添加状态</button>
+            </div>
+        </section>
+
+        <section class="mt-6">
+            <h2 class="section-title">装备</h2>
+            <div id="equipment" class="equipment-grid">
+                 <div class="equipment-slot">
+                    <label for="weapon-slot">武器</label>
+                    <span id="weapon-slot" class="item-name">[空]</span>
+                    </div>
+                 <div class="equipment-slot">
+                    <label for="armor-slot">护甲</label>
+                    <span id="armor-slot" class="item-name">[空]</span>
+                 </div>
+            </div>
+        </section>
+
+        <section class="mt-6">
+            <h2 class="section-title">物品栏</h2>
+            <div id="inventory-info" class="resource-item">
+                <label>容量</label>
+                <div class="resource-details">
+                    <span id="inventory-capacity">0</span> <span>/</span>
+                    <span id="inventory-max-capacity">10</span>
+                </div>
+                 <div class="source-details">(容量上限 = 10 + floor( 1.3 ^ 力量基础值 / 难度系数))</div> </div>
+        </section>
+
+        <section class="list-section mt-6">
+            <h2 class="section-title">成就</h2>
+            <ul id="achievements-list">
+                </ul>
+             <div class="add-item-form mt-4">
+                <input type="text" id="achievement-input" placeholder="输入新成就描述">
+                <button id="add-achievement-btn">添加成就</button>
+            </div>
+        </section>
+
+        <section class="mt-6">
+            <h2 class="section-title">背景故事</h2>
+            <textarea id="background-story" rows="6" placeholder="记录角色的重要经历..."></textarea>
+        </section>
+
+    </div>
+
+    <script>
+        // --- 数据定义 ---
+
+        // 属性列表
+        const ATTRIBUTES = ['力量', '敏捷', '体质', '智力', '感知', '魅力'];
+
+        // 数值资源列表 (用于循环生成 UI)
+        const NUMERICAL_RESOURCES = ['HP', 'MP', '士气', '年龄', '复活次数', '金币']; // HP/MP/士气 会有当前值和最大值
+
+        // 预定义的列表数据
+        const PERSONALITY_OPTIONS = ['乐观', '悲观', '勇敢', '怯懦', '慷慨', '自私', '诚实', '狡诈', '急躁', '冷静', '自卑', '好奇', '谨慎', '冲动']; // 增加一些选项
+        const IDENTITY_OPTIONS = ['小孩', '农民', '猎人', '商人', '工匠', '学者', '士兵', '佣兵', '流浪者', '贵族(低阶)', '盗贼', '牧师', '法师学徒', '吟游诗人']; // 增加一些选项
+        const STATUS_OPTIONS = [
+            // 永久示例
+            { name: '天生神力', type: 'permanent', description: '基础力量获得加成。' },
+            { name: '跛足', type: 'permanent', description: '移动速度和敏捷受到影响。' },
+            { name: '学者综合症', type: 'permanent', description: '智力极高，但社交能力受损。' },
+            { name: '心灵手巧', type: 'permanent', description: '在精细操作上更具优势。' },
+            // 临时示例
+            { name: '精力充沛', type: 'temporary', description: '行动更有效率。', duration: '事件' },
+            { name: '轻伤', type: 'temporary', description: '略微影响行动。', duration: '事件' },
+            { name: '重伤', type: 'temporary', description: '严重影响行动，HP低于30%触发。', duration: '事件' },
+            { name: '中毒', type: 'temporary', description: '持续受到伤害或属性惩罚。', duration: '事件' },
+            { name: '疲惫', type: 'temporary', description: '属性暂时下降。', duration: '事件' },
+            { name: '流血', type: 'temporary', description: '持续损失HP。', duration: '事件' },
+            { name: '眩晕', type: 'temporary', description: '无法行动。', duration: '事件' },
+            { name: '士气高涨', type: 'temporary', description: '战斗或判定更积极。', duration: '事件' },
+            { name: '恐惧', type: 'temporary', description: '可能导致行动失败或逃跑。', duration: '事件' },
+        ];
+
+        // --- 角色数据结构 ---
+        const characterData = {
+            difficultyFactor: 1.0, // 难度系数 (0.5:简单, 1:普通, 2:困难, 5:疯狂)
+            attributes: {
+                // 增加 proficiencyThreshold
+                '力量': { base: 10, equipment: 0, status: 0, total: 10, proficiency: 0, threshold: 0 },
+                '敏捷': { base: 10, equipment: 0, status: 0, total: 10, proficiency: 0, threshold: 0 },
+                '体质': { base: 10, equipment: 0, status: 0, total: 10, proficiency: 0, threshold: 0 },
+                '智力': { base: 10, equipment: 0, status: 0, total: 10, proficiency: 0, threshold: 0 },
+                '感知': { base: 10, equipment: 0, status: 0, total: 10, proficiency: 0, threshold: 0 },
+                '魅力': { base: 10, equipment: 0, status: 0, total: 10, proficiency: 0, threshold: 0 },
+            },
+            resources: {
+                hp: { current: 20, max: 20 }, // Initial HP based on default Con=10
+                mp: { current: 10, max: 10 }, // Initial MP based on default Int=10
+                morale: { current: 50, max: 100 },
+                age: { current: 20, max: 80 }, // Initial Age/Lifespan based on default Con=10
+                revives: { current: 3 },
+                gold: { current: 100 },
+            },
+            personality: ['乐观', '好奇'], // 性格列表
+            identity: ['农民', '流浪者'], // 身份列表 (改为数组)
+            status: [
+                { name: '精力充沛', type: 'temporary' }
+            ],
+            equipment: {
+                weapon: null,
+                armor: null,
+            },
+            inventory: {
+                currentSize: 0,
+                maxSize: 40, // Initial Max Size calculated later
+            },
+            alignment: {
+                ethics: 0, // 善良(-100) <-> 邪恶(100) -> Good/Evil
+                order: 0,  // 守序(-100) <-> 混乱(100) -> Lawful/Chaotic
+            },
+            achievements: ['完成新手教程'],
+            backgroundStory: '一个普通的农家子弟，渴望冒险。',
+        };
+
+        // --- 辅助函数 ---
+
+        /**
+         * @description 计算属性总值
+         * @param {string} attrName - 属性名称
+         * @returns {number} 计算后的总值
+         */
+        function calculateAttributeTotal(attrName) {
+            const attr = characterData.attributes[attrName];
+            if (!attr) return 0;
+            const base = Number(attr.base) || 0;
+            const equipment = Number(attr.equipment) || 0;
+            const status = Number(attr.status) || 0;
+            return base + equipment + status;
+        }
+
+        /**
+         * @description 计算并更新所有属性的总值
+         */
+        function updateAllAttributeTotals() {
+            ATTRIBUTES.forEach(attrName => {
+                if (characterData.attributes[attrName]) {
+                    characterData.attributes[attrName].total = calculateAttributeTotal(attrName);
+                }
+            });
+        }
+
+        /**
+         * @description 计算指定基础属性值所需的熟练度阈值
+         * @param {number} baseAttributeValue - 当前基础属性值
+         * @param {number} difficultyFactor - 游戏难度系数
+         * @returns {number} 达到下一级所需的熟练度阈值
+         */
+        function calculateProficiencyThreshold(baseAttributeValue, difficultyFactor) {
+            const baseVal = Number(baseAttributeValue) || 1;
+            const factor = Number(difficultyFactor) || 1;
+            // 使用指数增长公式: threshold = floor(100 * difficultyFactor * (1.2 ^ baseAttributeValue))
+            const threshold = Math.floor(100 * factor * Math.pow(1.2, baseVal));
+            return Math.max(100, threshold); // 确保阈值至少为 100
+        }
+
+        /**
+         * @description 计算并更新所有属性的熟练度阈值
+         */
+        function updateAllProficiencyThresholds() {
+            const factor = characterData.difficultyFactor;
+            ATTRIBUTES.forEach(attrName => {
+                const attr = characterData.attributes[attrName];
+                if (attr) {
+                    attr.threshold = calculateProficiencyThreshold(attr.base, factor);
+                }
+            });
+        }
+
+
+        /**
+         * @description 计算并更新衍生资源的最大值 (包括新的物品栏容量公式)
+         */
+        function updateDerivedResourceMaxValues() {
+            const conBase = characterData.attributes['体质']?.base || 0;
+            const intBase = characterData.attributes['智力']?.base || 0;
+            const strBase = characterData.attributes['力量']?.base || 0;
+            const factor = characterData.difficultyFactor; // 获取难度系数
+
+            characterData.resources.hp.max = 10 + conBase;
+            characterData.resources.mp.max = intBase;
+            characterData.resources.age.max = 60 + conBase * 2;
+            // 新的物品栏容量公式: 10 + floor(1.3 ^ 力量基础值 / 难度系数)
+            characterData.inventory.maxSize = 10 + Math.floor(Math.pow(1.3, strBase) / factor);
+
+            // 确保当前值不超过新的最大值
+            characterData.resources.hp.current = Math.min(characterData.resources.hp.current, characterData.resources.hp.max);
+            characterData.resources.mp.current = Math.min(characterData.resources.mp.current, characterData.resources.mp.max);
+            characterData.resources.morale.current = Math.min(characterData.resources.morale.current, characterData.resources.morale.max);
+        }
+
+        /**
+         * @description 根据阵营数值获取 DND 九宫格阵营名称及绝对限定符 (更新版)
+         * @param {number} ethics - 善良/邪恶轴数值 (-100 to 100)
+         * @param {number} order - 守序/混乱轴数值 (-100 to 100)
+         * @returns {string} 阵营名称 (例如: "守序善良 - 绝对守序")
+         */
+        function getAlignmentName(ethics, order) {
+            let ethicsDesc = "中立"; // Changed from 道德中立
+            if (ethics > 33) ethicsDesc = "善良";
+            else if (ethics < -33) ethicsDesc = "邪恶";
+
+            let orderDesc = "中立"; // Changed from 规则中立
+            if (order > 33) orderDesc = "守序";
+            else if (order < -33) orderDesc = "混乱";
+
+            let baseAlignment = "";
+            // Determine base alignment name
+            if (orderDesc === "中立" && ethicsDesc === "中立") {
+                baseAlignment = "中立"; // Changed from 真实中立
+            } else if (orderDesc === "中立") {
+                baseAlignment = ethicsDesc + "中立";
+            } else if (ethicsDesc === "中立") {
+                 baseAlignment = orderDesc + "中立";
+            } else {
+                 baseAlignment = orderDesc + ethicsDesc;
+            }
+
+            // Add absolute qualifiers if applicable
+            let absoluteQualifiers = [];
+            if (ethics === 100) absoluteQualifiers.push("绝对善良");
+            else if (ethics === -100) absoluteQualifiers.push("绝对邪恶");
+
+            if (order === 100) absoluteQualifiers.push("绝对守序");
+            else if (order === -100) absoluteQualifiers.push("绝对混乱");
+
+            // Combine result, excluding absolute for True Neutral
+            if (absoluteQualifiers.length > 0 && baseAlignment !== "中立") {
+                return `${baseAlignment} - ${absoluteQualifiers.join(' - ')}`;
+            } else {
+                return baseAlignment;
+            }
+        }
+
+
+        // --- 渲染函数 ---
+
+        /**
+         * @description 渲染所有核心属性到 UI
+         */
+        function renderAttributes() {
+            const container = document.getElementById('attributes');
+            container.innerHTML = '';
+            updateAllAttributeTotals();
+            updateAllProficiencyThresholds();
+
+            ATTRIBUTES.forEach(attrName => {
+                const attr = characterData.attributes[attrName];
+                if (!attr) return;
+
+                const element = document.createElement('div');
+                element.classList.add('attribute-item');
+                const proficiencyPercent = attr.threshold > 0 ? Math.min(100, (attr.proficiency / attr.threshold) * 100) : 0;
+
+                element.innerHTML = `
+                    <label>${attrName}</label>
+                    <div class="attribute-details">
+                        <span id="${attrName}-total">${attr.total}</span>
+                    </div>
+                    <div class="proficiency-display">
+                        熟练度: <span id="${attrName}-proficiency">${attr.proficiency}</span> / <span id="${attrName}-threshold">${attr.threshold}</span>
+                    </div>
+                    <div class="proficiency-bar" title="${proficiencyPercent.toFixed(1)}%">
+                        <div class="proficiency-bar-inner" style="width: ${proficiencyPercent}%;"></div>
+                    </div>
+                    <div class="source-details mt-2"> 基础: <input type="number" class="attr-input base" data-attr="${attrName}" value="${attr.base}" style="width: 50px; font-size: 0.8rem; padding: 1px 3px;">
+                        装备: <span id="${attrName}-equipment">${attr.equipment}</span> |
+                        状态: <span id="${attrName}-status">${attr.status}</span>
+                    </div>
+                `;
+                container.appendChild(element);
+
+                const inputElement = element.querySelector(`.attr-input.base[data-attr="${attrName}"]`);
+                if (inputElement) {
+                    inputElement.addEventListener('change', handleAttributeBaseChange);
+                    inputElement.addEventListener('input', handleAttributeBaseChange);
+                }
+            });
+        }
+
+        /**
+         * @description 渲染所有数值资源到 UI
+         */
+        function renderResources() {
+            const container = document.getElementById('resources');
+            container.innerHTML = '';
+            updateDerivedResourceMaxValues();
+
+            ['hp', 'mp', 'morale'].forEach(resKey => {
+                const res = characterData.resources[resKey];
+                if (!res) return;
+                const nameMap = { hp: '血量', mp: '蓝量', morale: '士气' };
+                const element = document.createElement('div');
+                element.classList.add('resource-item');
+                element.innerHTML = `
+                    <label>${nameMap[resKey]}</label>
+                    <div class="resource-details">
+                        <span id="${resKey}-current">${res.current}</span>
+                        <span>/</span>
+                        <span id="${resKey}-max">${res.max}</span>
+                    </div>
+                    <div class="resource-controls mt-1">
+                        <button class="res-btn minus" data-res="${resKey}" data-type="current">-</button>
+                        <button class="res-btn plus" data-res="${resKey}" data-type="current">+</button>
+                        <span class="text-xs ml-2">当前值</span>
+                    </div>
+                `;
+                container.appendChild(element);
+            });
+
+            const ageRes = characterData.resources.age;
+            if (ageRes) {
+                const ageElement = document.createElement('div');
+                ageElement.classList.add('resource-item');
+                ageElement.innerHTML = `
+                    <label>年龄 / 寿命</label>
+                    <div class="resource-details">
+                        <span id="age-current">${ageRes.current}</span>
+                        <span>/</span>
+                        <span id="age-max">${ageRes.max}</span>
+                    </div>
+                    <div class="resource-controls mt-1">
+                        <button class="res-btn minus" data-res="age" data-type="current">-</button>
+                        <button class="res-btn plus" data-res="age" data-type="current">+</button>
+                        <span class="text-xs ml-2">年龄</span>
+                    </div>
+                `;
+                container.appendChild(ageElement);
+            }
+
+            ['revives', 'gold'].forEach(resKey => {
+                 const res = characterData.resources[resKey];
+                 if (!res) return;
+                 const nameMap = { revives: '复活次数', gold: '金币' };
+                 const element = document.createElement('div');
+                 element.classList.add('resource-item');
+                 element.innerHTML = `
+                    <label>${nameMap[resKey]}</label>
+                    <div class="resource-details">
+                        <span id="${resKey}-current">${res.current}</span>
+                    </div>
+                    <div class="resource-controls mt-1">
+                        <button class="res-btn minus" data-res="${resKey}" data-type="current">-</button>
+                        <button class="res-btn plus" data-res="${resKey}" data-type="current">+</button>
+                    </div>
+                 `;
+                 container.appendChild(element);
+            });
+
+             container.querySelectorAll('.res-btn').forEach(button => {
+                 button.addEventListener('click', handleResourceButtonClick);
+             });
+        }
+
+        /**
+         * @description 渲染性格列表和添加选项
+         */
+        function renderPersonality() {
+            const listContainer = document.getElementById('personality-list');
+            const selectContainer = document.getElementById('personality-select');
+            listContainer.innerHTML = '';
+            selectContainer.innerHTML = '<option value="">--选择性格--</option>'; // Add placeholder
+
+            characterData.personality.forEach((trait, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${trait}</span>
+                    <button class="delete-btn" data-index="${index}" data-list="personality">X</button>
+                `;
+                listContainer.appendChild(li);
+            });
+
+            PERSONALITY_OPTIONS.forEach(option => {
+                if (!characterData.personality.includes(option)) {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option;
+                    optionElement.textContent = option;
+                    selectContainer.appendChild(optionElement);
+                }
+            });
+
+             listContainer.removeEventListener('click', handleListDeleteClick);
+             listContainer.addEventListener('click', handleListDeleteClick);
+        }
+
+        /**
+         * @description 渲染身份列表和添加选项
+         */
+        function renderIdentity() {
+            const listContainer = document.getElementById('identity-list');
+            const selectContainer = document.getElementById('identity-select');
+            listContainer.innerHTML = '';
+            selectContainer.innerHTML = '<option value="">--选择身份--</option>'; // Add placeholder
+
+            characterData.identity.forEach((id, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${id}</span>
+                    <button class="delete-btn" data-index="${index}" data-list="identity">X</button>
+                `;
+                listContainer.appendChild(li);
+            });
+
+            IDENTITY_OPTIONS.forEach(option => {
+                if (!characterData.identity.includes(option)) {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option;
+                    optionElement.textContent = option;
+                    selectContainer.appendChild(optionElement);
+                }
+            });
+
+             listContainer.removeEventListener('click', handleListDeleteClick);
+             listContainer.addEventListener('click', handleListDeleteClick);
+        }
+
+        /**
+         * @description 渲染状态列表和添加选项
+         */
+        function renderStatus() {
+            const permanentList = document.getElementById('permanent-status-list');
+            const temporaryList = document.getElementById('temporary-status-list');
+            const selectContainer = document.getElementById('status-select');
+            permanentList.innerHTML = '';
+            temporaryList.innerHTML = '';
+            selectContainer.innerHTML = '<option value="">--选择状态--</option>'; // Add placeholder
+
+            characterData.status.forEach((status, index) => {
+                 const li = document.createElement('li');
+                 const statusDef = STATUS_OPTIONS.find(s => s.name === status.name) || {description: '未知效果'};
+                 li.innerHTML = `
+                    <span>${status.name} <span class="text-xs text-gray-500">- ${statusDef.description}</span></span>
+                    <button class="delete-btn" data-index="${index}" data-list="status">X</button>
+                 `;
+                 if (status.type === 'permanent') {
+                     permanentList.appendChild(li);
+                 } else {
+                     temporaryList.appendChild(li);
+                 }
+            });
+
+            const currentPermanentStatusNames = new Set(characterData.status.filter(s => s.type === 'permanent').map(s => s.name));
+            STATUS_OPTIONS.forEach(option => {
+                if (option.type === 'permanent' && currentPermanentStatusNames.has(option.name)) {
+                    return;
+                }
+                 const optionElement = document.createElement('option');
+                 optionElement.value = option.name;
+                 optionElement.textContent = `${option.name} (${option.type === 'permanent' ? '永久' : '临时'})`;
+                 selectContainer.appendChild(optionElement);
+            });
+
+             permanentList.removeEventListener('click', handleListDeleteClick);
+             permanentList.addEventListener('click', handleListDeleteClick);
+             temporaryList.removeEventListener('click', handleListDeleteClick);
+             temporaryList.addEventListener('click', handleListDeleteClick);
+        }
+
+        /**
+         * @description 渲染装备栏
+         */
+        function renderEquipment() {
+            document.getElementById('weapon-slot').textContent = characterData.equipment.weapon || '[空]';
+            document.getElementById('armor-slot').textContent = characterData.equipment.armor || '[空]';
+        }
+
+        /**
+         * @description 渲染物品栏信息
+         */
+        function renderInventoryInfo() {
+            document.getElementById('inventory-max-capacity').textContent = characterData.inventory.maxSize;
+            document.getElementById('inventory-capacity').textContent = characterData.inventory.currentSize;
+        }
+
+        /**
+         * @description 渲染阵营滑块和结果
+         */
+        function renderAlignment() {
+            const ethicsSlider = document.getElementById('ethics-axis');
+            const orderSlider = document.getElementById('order-axis');
+            const ethicsValue = document.getElementById('ethics-value');
+            const orderValue = document.getElementById('order-value');
+            const resultDisplay = document.getElementById('alignment-result');
+
+            ethicsSlider.value = characterData.alignment.ethics;
+            orderSlider.value = characterData.alignment.order;
+            ethicsValue.textContent = characterData.alignment.ethics;
+            orderValue.textContent = characterData.alignment.order;
+            resultDisplay.textContent = getAlignmentName(characterData.alignment.ethics, characterData.alignment.order);
+        }
+
+        /**
+         * @description 渲染成就列表和输入框
+         */
+        function renderAchievements() {
+            const listContainer = document.getElementById('achievements-list');
+            listContainer.innerHTML = '';
+            characterData.achievements.forEach((achievement, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${achievement}</span>
+                    <button class="delete-btn" data-index="${index}" data-list="achievements">X</button>
+                `;
+                listContainer.appendChild(li);
+            });
+             listContainer.removeEventListener('click', handleListDeleteClick);
+             listContainer.addEventListener('click', handleListDeleteClick);
+        }
+
+        /**
+         * @description 渲染背景故事文本域
+         */
+        function renderBackgroundStory() {
+            document.getElementById('background-story').value = characterData.backgroundStory;
+        }
+
+        /**
+         * @description 统一调用所有渲染函数，刷新整个面板
+         */
+        function renderCharacterSheet() {
+            renderAttributes();
+            renderResources();
+            renderPersonality();
+            renderIdentity();
+            renderStatus();
+            renderEquipment();
+            renderInventoryInfo();
+            renderAlignment();
+            renderAchievements();
+            renderBackgroundStory();
+            // Update difficulty factor display (handled in renderAttributes now)
+            // document.getElementById('difficulty-factor-display').textContent = characterData.difficultyFactor.toFixed(1); // No longer needed here
+            console.log("Character sheet rendered.");
+        }
+
+        // --- 事件处理函数 ---
+
+        /**
+         * @description 处理属性基础值输入框变化
+         * @param {Event} event
+         */
+        function handleAttributeBaseChange(event) {
+            const attrName = event.target.dataset.attr;
+            const newValue = parseInt(event.target.value, 10);
+            if (!isNaN(newValue) && characterData.attributes[attrName]) {
+                const validatedValue = Math.max(1, newValue);
+                if (validatedValue !== newValue) {
+                    event.target.value = validatedValue;
+                }
+                if (characterData.attributes[attrName].base !== validatedValue) {
+                    characterData.attributes[attrName].base = validatedValue;
+                    // Base attribute change affects totals, thresholds, resources, inventory -> redraw everything
+                    renderCharacterSheet();
+                }
+            }
+        }
+
+        /**
+         * @description 处理数值资源 +/- 按钮点击
+         * @param {Event} event
+         */
+        function handleResourceButtonClick(event) {
+             const button = event.target;
+             const resKey = button.dataset.res;
+             const type = button.dataset.type;
+             const amount = button.classList.contains('plus') ? 1 : -1;
+
+             if (characterData.resources[resKey]) {
+                 const resource = characterData.resources[resKey];
+                 if (resource.hasOwnProperty(type)) {
+                     resource[type] += amount;
+                     if (type === 'current') {
+                         if (resource.hasOwnProperty('max')) {
+                             resource.current = Math.min(resource.max, Math.max(0, resource.current));
+                         } else {
+                             resource.current = Math.max(0, resource.current);
+                         }
+                          if (resKey === 'age') {
+                             resource.current = Math.max(0, resource.current);
+                         }
+                     } else if (type === 'max') {
+                         resource.max = Math.max(1, resource.max); // Max HP/MP etc. should be at least 1
+                         if (resource.hasOwnProperty('current')) {
+                            resource.current = Math.min(resource.current, resource.max);
+                         }
+                     }
+                     renderResources();
+                 }
+             }
+        }
+
+        /**
+         * @description 处理列表删除按钮点击 (事件委托)
+         * @param {Event} event
+         */
+        function handleListDeleteClick(event) {
+             if (event.target.classList.contains('delete-btn')) {
+                 const button = event.target;
+                 const index = parseInt(button.dataset.index, 10);
+                 const listName = button.dataset.list;
+
+                 if (characterData.hasOwnProperty(listName) && Array.isArray(characterData[listName]) && !isNaN(index)) {
+                     characterData[listName].splice(index, 1);
+                     if (listName === 'personality') renderPersonality();
+                     else if (listName === 'identity') renderIdentity();
+                     else if (listName === 'status') renderStatus();
+                     else if (listName === 'achievements') renderAchievements();
+                 }
+             }
+        }
+
+        /**
+         * @description 处理添加性格按钮点击
+         */
+        function handleAddPersonality() {
+            const select = document.getElementById('personality-select');
+            const selectedTrait = select.value;
+            if (selectedTrait) { // Check if a valid option is selected
+                addPersonalityTrait(selectedTrait);
+                select.value = ""; // Reset select after adding
+            } else {
+                alert("请选择一个性格进行添加。");
+            }
+        }
+
+         /**
+         * @description 处理添加身份按钮点击
+         */
+        function handleAddIdentity() {
+            const select = document.getElementById('identity-select');
+            const selectedIdentity = select.value;
+            if (selectedIdentity) { // Check if a valid option is selected
+                addIdentity(selectedIdentity);
+                select.value = ""; // Reset select after adding
+            } else {
+                alert("请选择一个身份进行添加。");
+            }
+        }
+
+        /**
+         * @description 处理添加状态按钮点击
+         */
+        function handleAddStatus() {
+             const nameSelect = document.getElementById('status-select');
+             const typeSelect = document.getElementById('status-type-select');
+             const selectedName = nameSelect.value;
+             const selectedType = typeSelect.value;
+
+             if (selectedName) { // Check if a valid option is selected
+                 addStatusEffect(selectedName, selectedType);
+                 nameSelect.value = ""; // Reset select after adding
+             } else {
+                 alert("请选择一个状态进行添加。");
+             }
+        }
+
+        /**
+         * @description 处理阵营滑块变化
+         * @param {Event} event
+         */
+        function handleAlignmentChange(event) {
+            const axis = event.target.id === 'ethics-axis' ? 'ethics' : 'order';
+            const value = parseInt(event.target.value, 10);
+            characterData.alignment[axis] = value;
+            renderAlignment();
+        }
+
+        /**
+         * @description 处理添加成就按钮点击
+         */
+        function handleAddAchievement() {
+             const input = document.getElementById('achievement-input');
+             const newAchievement = input.value.trim();
+             if (newAchievement) {
+                 addAchievement(newAchievement);
+                 input.value = '';
+             } else {
+                 alert("请输入成就描述。");
+             }
+        }
+
+        /**
+         * @description 处理背景故事文本域变化
+         * @param {Event} event
+         */
+        function handleBackgroundStoryChange(event) {
+            characterData.backgroundStory = event.target.value;
+        }
+
+        /**
+         * @description 处理难度系数下拉框变化 (新增)
+         * @param {Event} event
+         */
+        function handleDifficultyChange(event) {
+            const newDifficulty = parseFloat(event.target.value);
+            if (!isNaN(newDifficulty)) {
+                characterData.difficultyFactor = newDifficulty;
+                console.log(`难度系数已更改为: ${characterData.difficultyFactor}`);
+                // 难度系数变化影响阈值和物品栏容量，需要重新渲染
+                renderCharacterSheet();
+            }
+        }
+
+
+        // --- 修改接口 (供外部调用) ---
+
+        /**
+         * @description 修改指定属性的基础值
+         * @param {string} attrName - 属性名称
+         * @param {number} value - 新的基础值 (会自动限制为 >= 1)
+         */
+        function setAttributeBase(attrName, value) {
+            if (characterData.attributes[attrName] && typeof value === 'number') {
+                const validatedValue = Math.max(1, value);
+                if (characterData.attributes[attrName].base !== validatedValue) {
+                    characterData.attributes[attrName].base = validatedValue;
+                    renderCharacterSheet(); // Refresh everything as base affects many things
+                }
+            } else {
+                console.warn(`无法设置属性 "${attrName}" 的基础值`);
+            }
+        }
+
+        /**
+         * @description 修改指定属性的装备加成
+         * @param {string} attrName - 属性名称
+         * @param {number} value - 新的装备加成值
+         */
+        function setAttributeEquipmentBonus(attrName, value) {
+             if (characterData.attributes[attrName] && typeof value === 'number') {
+                 if (characterData.attributes[attrName].equipment !== value) {
+                    characterData.attributes[attrName].equipment = value;
+                    renderCharacterSheet(); // Refresh needed parts
+                 }
+            } else {
+                console.warn(`无法设置属性 "${attrName}" 的装备加成`);
+            }
+        }
+         /**
+         * @description 修改指定属性的状态加成
+         * @param {string} attrName - 属性名称
+         * @param {number} value - 新的状态加成值
+         */
+        function setAttributeStatusBonus(attrName, value) {
+             if (characterData.attributes[attrName] && typeof value === 'number') {
+                 if (characterData.attributes[attrName].status !== value) {
+                    characterData.attributes[attrName].status = value;
+                    renderCharacterSheet(); // Refresh needed parts
+                 }
+            } else {
+                console.warn(`无法设置属性 "${attrName}" 的状态加成`);
+            }
+        }
+
+        /**
+         * @description 修改指定属性的熟练度，处理升级逻辑
+         * @param {string} attrName - 属性名称
+         * @param {number} amount - 增加的熟练度量 (必须为正数)
+         */
+        function modifyProficiency(attrName, amount) {
+             const attr = characterData.attributes[attrName];
+             if (attr && typeof amount === 'number' && amount > 0) {
+                 attr.proficiency += amount;
+                 console.log(`${attrName} 熟练度增加 ${amount}, 当前: ${attr.proficiency}/${attr.threshold}`);
+
+                 let leveledUp = false;
+                 while (attr.proficiency >= attr.threshold) {
+                     leveledUp = true;
+                     console.log(`${attrName} 熟练度达到阈值 ${attr.threshold}！`);
+                     attr.proficiency -= attr.threshold;
+                     attr.base += 1;
+                     console.log(`${attrName} 基础值提升为 ${attr.base}`);
+                     // 重新计算阈值放在循环外，避免重复计算
+                 }
+
+                 if (leveledUp) {
+                     // 升级后统一重新计算阈值并刷新整个面板
+                     renderCharacterSheet();
+                 } else {
+                     // 如果没升级，只刷新属性部分
+                     renderAttributes();
+                 }
+
+             } else if (!attr) {
+                 console.warn(`无法修改不存在的属性 "${attrName}" 的熟练度`);
+             } else if (amount <= 0) {
+                 console.warn(`熟练度增加量必须为正数 (尝试增加 ${amount})`);
+             }
+        }
+
+
+        /**
+         * @description 修改数值资源 (通用接口)
+         * @param {string} resKey - 资源键名 (如 'hp', 'mp', 'gold')
+         * @param {number} amount - 改变的量 (正数增加，负数减少)
+         * @param {string} [type='current'] - 修改 'current' 还是 'max' (如果适用)
+         */
+        function modifyResource(resKey, amount, type = 'current') {
+            if (characterData.resources[resKey] && typeof amount === 'number') {
+                const resource = characterData.resources[resKey];
+                if (resource.hasOwnProperty(type)) {
+                    const oldValue = resource[type];
+                    resource[type] += amount;
+                    // 边界检查
+                    if (type === 'current') {
+                         if (resource.hasOwnProperty('max')) {
+                             resource.current = Math.min(resource.max, Math.max(0, resource.current));
+                         } else {
+                             resource.current = Math.max(0, resource.current);
+                         }
+                          if (resKey === 'age') {
+                             resource.current = Math.max(0, resource.current);
+                         }
+                    } else if (type === 'max') {
+                         resource.max = Math.max(1, resource.max); // Max HP/MP etc. should be at least 1
+                         if (resource.hasOwnProperty('current')) {
+                            resource.current = Math.min(resource.current, resource.max);
+                         }
+                    }
+                    // 仅当值实际改变时才重新渲染
+                    if (resource[type] !== oldValue) {
+                        renderResources();
+                    }
+                    return true;
+                }
+            }
+            console.warn(`无法修改资源 "${resKey}" 的 "${type}" 值`);
+            return false;
+        }
+
+        /**
+         * @description 添加一个性格特征
+         * @param {string} trait - 要添加的性格
+         * @returns {boolean} 是否成功添加
+         */
+        function addPersonalityTrait(trait) {
+            if (typeof trait === 'string' && trait.trim() !== '' && !characterData.personality.includes(trait)) {
+                characterData.personality.push(trait);
+                renderPersonality();
+                return true;
+            }
+            if (characterData.personality.includes(trait)) {
+                 alert(`性格 "${trait}" 已经存在。`);
+            }
+            return false;
+        }
+        /**
+         * @description 移除一个性格特征
+         * @param {string} trait - 要移除的性格
+         * @returns {boolean} 是否成功移除
+         */
+        function removePersonalityTrait(trait) {
+             const index = characterData.personality.indexOf(trait);
+             if (index > -1) {
+                 characterData.personality.splice(index, 1);
+                 renderPersonality();
+                 return true;
+             }
+             console.warn(`无法移除不存在的性格 "${trait}"`);
+             return false;
+        }
+
+        /**
+         * @description 添加一个身份
+         * @param {string} identity - 要添加的身份
+         * @returns {boolean} 是否成功添加
+         */
+        function addIdentity(identity) {
+            if (typeof identity === 'string' && identity.trim() !== '' && !characterData.identity.includes(identity)) {
+                characterData.identity.push(identity);
+                renderIdentity();
+                return true;
+            }
+             if (characterData.identity.includes(identity)) {
+                 alert(`身份 "${identity}" 已经存在。`);
+            }
+            return false;
+        }
+        /**
+         * @description 移除一个身份
+         * @param {string} identity - 要移除的身份
+         * @returns {boolean} 是否成功移除
+         */
+        function removeIdentity(identity) {
+             const index = characterData.identity.indexOf(identity);
+             if (index > -1) {
+                 characterData.identity.splice(index, 1);
+                 renderIdentity();
+                 return true;
+             }
+             console.warn(`无法移除不存在的身份 "${identity}"`);
+             return false;
+        }
+
+
+        /**
+         * @description 添加一个状态效果
+         * @param {string} statusName - 状态名称
+         * @param {'permanent' | 'temporary'} statusType - 状态类型
+         * @returns {boolean} 是否成功添加
+         */
+        function addStatusEffect(statusName, statusType) {
+             if (typeof statusName === 'string' && statusName.trim() !== '' && (statusType === 'permanent' || statusType === 'temporary')) {
+                 if (statusType === 'permanent' && characterData.status.some(s => s.name === statusName && s.type === 'permanent')) {
+                     alert(`永久状态 "${statusName}" 已经存在！`);
+                     return false;
+                 }
+                 characterData.status.push({ name: statusName, type: statusType });
+                 renderStatus();
+                 return true;
+             }
+             alert("请选择一个有效的状态进行添加。");
+             return false;
+        }
+         /**
+         * @description 移除一个状态效果 (通过名称和类型精确匹配，移除第一个匹配项)
+         * @param {string} statusName - 状态名称
+         * @param {'permanent' | 'temporary'} statusType - 状态类型
+         * @returns {boolean} 是否成功移除
+         */
+        function removeStatusEffect(statusName, statusType) {
+             const index = characterData.status.findIndex(s => s.name === statusName && s.type === statusType);
+             if (index > -1) {
+                 characterData.status.splice(index, 1);
+                 renderStatus();
+                 return true;
+             }
+             console.warn(`无法移除不存在的状态 "${statusName}" (${statusType})`);
+             return false;
+        }
+        /**
+         * @description 移除所有临时状态
+         */
+        function removeAllTemporaryStatus() {
+            let removed = false;
+            characterData.status = characterData.status.filter(s => {
+                if (s.type === 'temporary') {
+                    removed = true;
+                    return false;
+                }
+                return true;
+            });
+            if (removed) {
+                renderStatus();
+            }
+        }
+
+
+        /**
+         * @description 装备物品，并应用/移除属性加成
+         * @param {'weapon' | 'armor'} slot - 装备槽位
+         * @param {string | null} newItemName - 新物品名称 (或 null 表示卸下)
+         * @param {Object} [newItemStats={}] - 新物品提供的属性加成 (例如 {力量: 2, 敏捷: -1})
+         * @param {Object} [oldItemStats={}] - 旧物品提供的属性加成 (用于卸下时恢复)
+         */
+        function equipItem(slot, newItemName, newItemStats = {}, oldItemStats = {}) {
+            if (characterData.equipment.hasOwnProperty(slot)) {
+                // 1. 移除旧装备加成
+                for (const attrName in oldItemStats) {
+                    if (characterData.attributes[attrName]) {
+                        characterData.attributes[attrName].equipment -= (Number(oldItemStats[attrName]) || 0);
+                    }
+                }
+                // 2. 添加新装备加成
+                for (const attrName in newItemStats) {
+                     if (characterData.attributes[attrName]) {
+                        characterData.attributes[attrName].equipment += (Number(newItemStats[attrName]) || 0);
+                     }
+                }
+                // 3. 更新装备槽名称
+                characterData.equipment[slot] = newItemName;
+                // 4. 刷新整个面板以反映所有变化
+                renderCharacterSheet();
+            } else {
+                console.warn(`无效的装备槽位: ${slot}`);
+            }
+        }
+
+
+        /**
+         * @description 修改阵营值
+         * @param {'ethics' | 'order'} axis - 阵营轴
+         * @param {number} amount - 改变的量
+         */
+        function modifyAlignment(axis, amount) {
+            if (characterData.alignment.hasOwnProperty(axis) && typeof amount === 'number') {
+                const oldValue = characterData.alignment[axis];
+                characterData.alignment[axis] += amount;
+                characterData.alignment[axis] = Math.max(-100, Math.min(100, characterData.alignment[axis]));
+                if (characterData.alignment[axis] !== oldValue) {
+                    renderAlignment();
+                }
+            } else {
+                 console.warn(`无法修改无效的阵营轴 "${axis}"`);
+            }
+        }
+
+        /**
+         * @description 添加成就
+         * @param {string} achievement - 成就描述
+         * @returns {boolean} 是否成功添加
+         */
+        function addAchievement(achievement) {
+             if (typeof achievement === 'string' && achievement.trim() !== '' && !characterData.achievements.includes(achievement)) {
+                 characterData.achievements.push(achievement);
+                 renderAchievements();
+                 return true;
+             }
+             if (characterData.achievements.includes(achievement)) {
+                 alert(`成就 "${achievement}" 已经存在。`);
+             }
+             return false;
+        }
+
+        /**
+         * @description 添加背景故事条目
+         * @param {string} entry - 要添加的背景故事文本
+         */
+        function addBackgroundStoryEntry(entry) {
+            if (typeof entry === 'string' && entry.trim() !== '') {
+                if (characterData.backgroundStory) {
+                    characterData.backgroundStory += "\n" + entry;
+                } else {
+                    characterData.backgroundStory = entry;
+                }
+                renderBackgroundStory();
+            }
+        }
+
+        // --- 初始化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Initializing character module v1.2...");
+            // 绑定基础事件监听器
+            document.getElementById('difficulty-select').addEventListener('change', handleDifficultyChange); // Added listener
+            document.getElementById('add-personality-btn').addEventListener('click', handleAddPersonality);
+            document.getElementById('add-identity-btn').addEventListener('click', handleAddIdentity);
+            document.getElementById('add-status-btn').addEventListener('click', handleAddStatus);
+            document.getElementById('ethics-axis').addEventListener('input', handleAlignmentChange);
+            document.getElementById('order-axis').addEventListener('input', handleAlignmentChange);
+            document.getElementById('add-achievement-btn').addEventListener('click', handleAddAchievement);
+            document.getElementById('background-story').addEventListener('input', handleBackgroundStoryChange);
+
+            // 初始渲染 (包括计算初始阈值和容量)
+            renderCharacterSheet();
+            console.log("Character module v1.2 initialized.");
+
+        });
+
+    </script>
+</body>
+</html>
+
