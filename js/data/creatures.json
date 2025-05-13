@@ -1,0 +1,12 @@
+{
+    "version": "1.0",
+    "creatures": [
+        {
+            "id": "example_creature",
+            "name": "示例生物",
+            "description": "这是一个示例生物",
+            "type": "normal",
+            "stats": {}
+        }
+    ]
+} 

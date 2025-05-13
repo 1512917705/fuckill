@@ -1,0 +1,12 @@
+{
+    "version": "1.0",
+    "events": [
+        {
+            "id": "example_event",
+            "name": "示例事件",
+            "description": "这是一个示例事件",
+            "type": "random",
+            "conditions": {}
+        }
+    ]
+} 

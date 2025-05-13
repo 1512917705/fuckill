@@ -1,0 +1,12 @@
+{
+    "version": "1.0",
+    "items": [
+        {
+            "id": "example_item",
+            "name": "示例物品",
+            "description": "这是一个示例物品",
+            "type": "resource",
+            "properties": {}
+        }
+    ]
+} 

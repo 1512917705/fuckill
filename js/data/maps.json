@@ -1,0 +1,12 @@
+{
+    "version": "1.0",
+    "maps": [
+        {
+            "id": "example_map",
+            "name": "示例地图",
+            "description": "这是一个示例地图",
+            "type": "region",
+            "locations": []
+        }
+    ]
+} 

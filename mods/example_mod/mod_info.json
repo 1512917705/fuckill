@@ -1,0 +1,9 @@
+{
+    "id": "example_mod",
+    "name": "示例Mod",
+    "version": "1.0.0",
+    "author": "示例作者",
+    "description": "这是一个示例Mod，展示了Mod的基本结构",
+    "dependencies": [],
+    "load_order": 100
+} 

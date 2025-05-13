@@ -1,0 +1,12 @@
+{
+    "version": "1.0",
+    "worlds": [
+        {
+            "id": "example_world",
+            "name": "示例世界",
+            "description": "这是一个示例世界",
+            "type": "normal",
+            "rules": {}
+        }
+    ]
+} 
