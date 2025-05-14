@@ -1,16 +1,230 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fuckill - AI驱动的文字冒险与合成游戏</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 自定义样式表 -->
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
 </head>
 <body>
-    <!-- 主游戏界面将在这里实现 -->
-    
+    <!-- 顶部菜单栏 -->
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">Fuckill</h1>
+            <div class="flex gap-4">
+                <button class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition">
+                    设置
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <main class="flex-1 container mx-auto p-4">
+        <!-- 三栏布局容器 -->
+        <div class="flex flex-col lg:flex-row gap-4 h-full">
+            <!-- 左栏：角色状态区 -->
+            <section class="lg:w-1/4 bg-white rounded-lg shadow-sm">
+                <div class="p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-gray-800">角色状态</h2>
+                        <div class="space-x-2">
+                            <button id="details-btn" class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-sm transition">
+                                <i class="fas fa-address-card mr-1"></i>详情
+                            </button>
+                            <button id="synthesis-btn" class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded text-sm transition">
+                                <i class="fas fa-magic mr-1"></i>合成
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 核心资源区域 -->
+                    <div class="space-y-3">
+                        <!-- 生命值和法力值 -->
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-medium text-red-600 w-16">生命值</span>
+                                <div class="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
+                                    <div id="hp-bar" class="h-full bg-red-500 rounded-full" style="width: 85%">
+                                        <div id="hp-text" class="px-2 text-xs text-white leading-4">85/100</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-medium text-blue-600 w-16">法力值</span>
+                                <div class="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
+                                    <div id="mp-bar" class="h-full bg-blue-500 rounded-full" style="width: 60%">
+                                        <div id="mp-text" class="px-2 text-xs text-white leading-4">60/100</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 核心属性 -->
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">核心属性</h3>
+                            <div id="attributes-display" class="grid grid-cols-2 gap-2">
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">力量</span>
+                                    <span id="attribute-strength" class="text-sm font-medium">10</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">敏捷</span>
+                                    <span id="attribute-dexterity" class="text-sm font-medium">10</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">体质</span>
+                                    <span id="attribute-constitution" class="text-sm font-medium">10</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">智力</span>
+                                    <span id="attribute-intelligence" class="text-sm font-medium">10</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">感知</span>
+                                    <span id="attribute-wisdom" class="text-sm font-medium">10</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">魅力</span>
+                                    <span id="attribute-charisma" class="text-sm font-medium">10</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 身份信息 -->
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">身份信息</h3>
+                            <div class="space-y-1">
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">名称</span>
+                                    <span id="character-name" class="text-sm font-medium">勇敢的冒险者</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">职业</span>
+                                    <span id="character-class" class="text-sm font-medium">战士</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-white p-2 rounded">
+                                    <span class="text-sm text-gray-600">阵营</span>
+                                    <span id="character-alignment" class="text-sm font-medium">守序善良</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 状态效果 -->
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">状态效果</h3>
+                            <div id="status-effects" class="space-y-1">
+                                <div class="text-sm text-green-600 flex items-center">
+                                    <i class="fas fa-leaf mr-1"></i>
+                                    <span>精力充沛</span>
+                                    <span class="ml-1 text-xs text-gray-500">(临时)</span>
+                                </div>
+                                <!-- 其他状态效果会动态添加 -->
+                            </div>
+                        </div>
+
+                        <!-- 物品栏 -->
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-sm font-medium text-gray-700">物品栏</h3>
+                                <span id="inventory-summary" class="text-xs text-gray-500">0/20</span>
+                            </div>
+                            <div class="bg-white rounded p-1">
+                                <ul id="inventory-list" class="divide-y divide-gray-100 text-sm">
+                                    <li class="p-2 text-gray-500 italic">物品栏为空</li>
+                                    <!-- 物品会动态添加 -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 中栏：事件信息区 -->
+            <section class="lg:w-1/2 bg-white rounded-lg shadow-sm">
+                <div class="p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-gray-800">事件信息</h2>
+                        <div class="space-x-2">
+                            <button id="refresh-event-btn" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition">
+                                <i class="fas fa-sync-alt mr-1"></i>刷新
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 事件内容区域 -->
+                    <div class="space-y-4">
+                        <!-- 事件描述 -->
+                        <div id="event-description" class="bg-gray-50 rounded-lg p-4 text-gray-700">
+                            <p>加载事件中...</p>
+                        </div>
+                        
+                        <!-- 事件选项 -->
+                        <div id="event-options" class="space-y-2">
+                            <!-- 选项按钮会动态生成 -->
+                            <button class="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded transition">
+                                选项加载中...
+                            </button>
+                        </div>
+                        
+                        <!-- 生物列表（可选） -->
+                        <div id="event-creatures" class="bg-gray-50 rounded-lg p-3 hidden">
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">场景中的生物</h3>
+                            <div class="space-y-1">
+                                <!-- 生物会动态添加 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右栏：世界地图区 -->
+            <section class="lg:w-1/4 bg-white rounded-lg shadow-sm">
+                <div class="p-4">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">世界地图</h2>
+                    <div class="bg-gray-50 rounded-lg p-3 mb-3">
+                        <div class="text-sm">
+                            <div><strong>当前位置:</strong> <span>(5, 5)</span></div>
+                            <div><strong>地形:</strong> <span>茂密森林</span></div>
+                            <div><strong>天气:</strong> <span>晴朗</span></div>
+                        </div>
+                    </div>
+                    <div class="aspect-square bg-gray-50 rounded-lg">
+                        <!-- 地图网格将在这里动态生成 -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white shadow-sm mt-auto">
+        <div class="container mx-auto px-4 py-3 text-center text-sm text-gray-600">
+            <p>Fuckill - AI驱动的文字冒险与合成游戏 &copy; 2025</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript 文件 -->
     <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/eventBus.js"></script>
-    <script src="js/main.js"></script>
+    <script type="module"  src="js/utils.js"></script>
+    <script type="module"  src="js/eventBus.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html> 

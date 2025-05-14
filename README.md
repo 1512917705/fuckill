@@ -5,7 +5,7 @@ AI驱动的文字冒险与合成游戏
 重要的设计文档在document目录下，有《游戏设计文档.md》《游戏开发文档 - 核心数据结构.md》《架构文档.md》《UI逻辑文档.md》
 
 参考原始demo文件：
-人物模板V1.2.html 、事件模块.html、文字游戏demo1.0.html、UI_frame.html，这四个文件是在项目启动之前的一些功能验证demo，在AI生成代码时候可以参考这些代码。
+originalDemo目录下的人物模板V1.2.html 、事件模块.html、文字游戏demo1.0.html、UI_frame.html，这四个文件是在项目启动之前的一些功能验证demo，在AI生成代码时候可以参考这些代码。
 
 项目文件结构
 fuckill/
